@@ -5,11 +5,27 @@ import { MapPin, Search, Navigation, ChevronRight, Car } from 'lucide-react-nati
 import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Link } from 'expo-router';
+import Animated, { 
+  FadeInDown, 
+  FadeInRight,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+  withRepeat,
+  Easing
+} from 'react-native-reanimated';
+import Colors from '../../constants/Colors';
+import Logo from '../../components/Logo';
+import AnimatedPressable from '../../components/AnimatedPressable';
 
 export default function HomeScreen() {
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [destination, setDestination] = useState('');
+  
+  // Animation values
+  const searchBarScale = useSharedValue(1);
+  const mapOpacity = useSharedValue(0.8);
 
   useEffect(() => {
     (async () => {
@@ -24,7 +40,34 @@ export default function HomeScreen() {
         setLocation(location);
       }
     })();
+    
+    // Start subtle animations
+    mapOpacity.value = withRepeat(
+      withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
+      -1,
+      true
+    );
   }, []);
+
+  const mapAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: mapOpacity.value
+    };
+  });
+
+  const searchBarAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: searchBarScale.value }]
+    };
+  });
+
+  const handleSearchFocus = () => {
+    searchBarScale.value = withTiming(1.02, { duration: 200 });
+  };
+
+  const handleSearchBlur = () => {
+    searchBarScale.value = withTiming(1, { duration: 200 });
+  };
 
   const quickRides = [
     {
@@ -51,7 +94,7 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View style={styles.logoContainer}>
-          <Text style={styles.logoText}>RideShare</Text>
+          <Logo />
         </View>
         <TouchableOpacity style={styles.profileButton}>
           <Image
@@ -64,23 +107,25 @@ export default function HomeScreen() {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.mapContainer}>
           {location ? (
-            <MapView
-              style={styles.map}
-              initialRegion={{
-                latitude: location.coords.latitude,
-                longitude: location.coords.longitude,
-                latitudeDelta: 0.0922,
-                longitudeDelta: 0.0421,
-              }}
-            >
-              <Marker
-                coordinate={{
+            <Animated.View style={[styles.mapWrapper, mapAnimatedStyle]}>
+              <MapView
+                style={styles.map}
+                initialRegion={{
                   latitude: location.coords.latitude,
                   longitude: location.coords.longitude,
+                  latitudeDelta: 0.0922,
+                  longitudeDelta: 0.0421,
                 }}
-                title="Your Location"
-              />
-            </MapView>
+              >
+                <Marker
+                  coordinate={{
+                    latitude: location.coords.latitude,
+                    longitude: location.coords.longitude,
+                  }}
+                  title="Your Location"
+                />
+              </MapView>
+            </Animated.View>
           ) : (
             <View style={[styles.map, styles.mapPlaceholder]}>
               {errorMsg ? (
@@ -92,53 +137,72 @@ export default function HomeScreen() {
           )}
         </View>
 
-        <View style={styles.searchContainer}>
-          <View style={styles.searchBar}>
-            <MapPin size={20} color="#6C63FF" style={styles.searchIcon} />
+        <Animated.View 
+          style={styles.searchContainer}
+          entering={FadeInDown.delay(300).duration(500)}
+        >
+          <Animated.View style={[styles.searchBar, searchBarAnimatedStyle]}>
+            <MapPin size={20} color={Colors.light.primary} style={styles.searchIcon} />
             <TextInput
               style={styles.searchInput}
               placeholder="Where to?"
               value={destination}
               onChangeText={setDestination}
+              onFocus={handleSearchFocus}
+              onBlur={handleSearchBlur}
+              placeholderTextColor={Colors.light.subtext}
             />
             <TouchableOpacity style={styles.searchButton}>
               <Navigation size={20} color="#FFFFFF" />
             </TouchableOpacity>
-          </View>
-        </View>
+          </Animated.View>
+        </Animated.View>
 
-        <View style={styles.quickRidesSection}>
+        <Animated.View 
+          style={styles.quickRidesSection}
+          entering={FadeInDown.delay(400).duration(500)}
+        >
           <Text style={styles.sectionTitle}>Quick Rides</Text>
-          {quickRides.map((ride) => (
-            <Link href="/rides" key={ride.id} asChild>
-              <TouchableOpacity style={styles.quickRideItem}>
-                <View style={styles.quickRideIconContainer}>
-                  <Text style={styles.quickRideIcon}>{ride.icon}</Text>
-                </View>
-                <View style={styles.quickRideInfo}>
-                  <Text style={styles.quickRideName}>{ride.name}</Text>
-                  <Text style={styles.quickRideArea}>{ride.area}</Text>
-                </View>
-                <ChevronRight size={20} color="#8E8E93" />
-              </TouchableOpacity>
-            </Link>
+          {quickRides.map((ride, index) => (
+            <Animated.View 
+              key={ride.id}
+              entering={FadeInRight.delay(500 + index * 100).duration(400)}
+            >
+              <Link href="/rides" asChild>
+                <AnimatedPressable style={styles.quickRideItem}>
+                  <View style={styles.quickRideIconContainer}>
+                    <Text style={styles.quickRideIcon}>{ride.icon}</Text>
+                  </View>
+                  <View style={styles.quickRideInfo}>
+                    <Text style={styles.quickRideName}>{ride.name}</Text>
+                    <Text style={styles.quickRideArea}>{ride.area}</Text>
+                  </View>
+                  <ChevronRight size={20} color={Colors.light.subtext} />
+                </AnimatedPressable>
+              </Link>
+            </Animated.View>
           ))}
-        </View>
+        </Animated.View>
 
-        <Link href="/offer-ride" asChild>
-          <TouchableOpacity style={styles.offerRideButton}>
-            <View style={styles.offerRideIconContainer}>
-              <Car size={24} color="#6C63FF" />
-            </View>
-            <View style={styles.offerRideInfo}>
-              <Text style={styles.offerRideName}>Offer a Ride</Text>
-              <Text style={styles.offerRideDescription}>Share your trip with others</Text>
-            </View>
-            <ChevronRight size={20} color="#8E8E93" />
-          </TouchableOpacity>
-        </Link>
+        <Animated.View entering={FadeInDown.delay(700).duration(500)}>
+          <Link href="/offer-ride" asChild>
+            <AnimatedPressable style={styles.offerRideButton}>
+              <View style={styles.offerRideIconContainer}>
+                <Car size={24} color={Colors.light.primary} />
+              </View>
+              <View style={styles.offerRideInfo}>
+                <Text style={styles.offerRideName}>Offer a Ride</Text>
+                <Text style={styles.offerRideDescription}>Share your trip with others</Text>
+              </View>
+              <ChevronRight size={20} color={Colors.light.subtext} />
+            </AnimatedPressable>
+          </Link>
+        </Animated.View>
 
-        <View style={styles.promoSection}>
+        <Animated.View 
+          style={styles.promoSection}
+          entering={FadeInDown.delay(800).duration(500)}
+        >
           <Text style={styles.sectionTitle}>Invite Friends & Get Discount</Text>
           <View style={styles.promoCard}>
             <Image
@@ -153,12 +217,12 @@ export default function HomeScreen() {
               <View style={styles.promoCodeContainer}>
                 <Text style={styles.promoCode}>RIDE2023</Text>
               </View>
-              <TouchableOpacity style={styles.promoButton}>
+              <AnimatedPressable style={styles.promoButton}>
                 <Text style={styles.promoButtonText}>Invite</Text>
-              </TouchableOpacity>
+              </AnimatedPressable>
             </View>
           </View>
-        </View>
+        </Animated.View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -167,7 +231,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: Colors.light.background,
   },
   header: {
     flexDirection: 'row',
@@ -175,9 +239,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 15,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.light.card,
     borderBottomWidth: 1,
-    borderBottomColor: '#EEEEEE',
+    borderBottomColor: Colors.light.border,
   },
   logoContainer: {
     flexDirection: 'row',
@@ -186,13 +250,15 @@ const styles = StyleSheet.create({
   logoText: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#6C63FF',
+    color: Colors.light.primary,
   },
   profileButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
     overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: Colors.light.primary,
   },
   profileImage: {
     width: '100%',
@@ -205,7 +271,18 @@ const styles = StyleSheet.create({
     height: 200,
     marginHorizontal: 20,
     marginTop: 20,
-    borderRadius: 12,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  mapWrapper: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 16,
     overflow: 'hidden',
   },
   map: {
@@ -218,11 +295,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   errorText: {
-    color: '#FF3B30',
+    color: Colors.light.error,
     textAlign: 'center',
   },
   loadingText: {
-    color: '#8E8E93',
+    color: Colors.light.subtext,
     textAlign: 'center',
   },
   searchContainer: {
@@ -232,7 +309,7 @@ const styles = StyleSheet.create({
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.light.card,
     borderRadius: 12,
     paddingHorizontal: 15,
     paddingVertical: 12,
@@ -248,10 +325,11 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#333333',
+    color: Colors.light.text,
+    fontFamily: 'Inter-Regular',
   },
   searchButton: {
-    backgroundColor: '#6C63FF',
+    backgroundColor: Colors.light.primary,
     borderRadius: 8,
     padding: 8,
   },
@@ -262,13 +340,14 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333333',
+    color: Colors.light.text,
     marginBottom: 15,
+    fontFamily: 'Inter-SemiBold',
   },
   quickRideItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.light.card,
     borderRadius: 12,
     padding: 15,
     marginBottom: 10,
@@ -296,17 +375,19 @@ const styles = StyleSheet.create({
   quickRideName: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#333333',
+    color: Colors.light.text,
+    fontFamily: 'Inter-Medium',
   },
   quickRideArea: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: Colors.light.subtext,
     marginTop: 2,
+    fontFamily: 'Inter-Regular',
   },
   offerRideButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.light.card,
     borderRadius: 12,
     padding: 15,
     marginHorizontal: 20,
@@ -332,12 +413,14 @@ const styles = StyleSheet.create({
   offerRideName: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#333333',
+    color: Colors.light.text,
+    fontFamily: 'Inter-Medium',
   },
   offerRideDescription: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: Colors.light.subtext,
     marginTop: 2,
+    fontFamily: 'Inter-Regular',
   },
   promoSection: {
     marginTop: 25,
@@ -345,8 +428,8 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   promoCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: Colors.light.card,
+    borderRadius: 16,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -359,33 +442,37 @@ const styles = StyleSheet.create({
     height: 120,
   },
   promoContent: {
-    padding: 15,
+    padding: 20,
   },
   promoTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333333',
+    color: Colors.light.text,
     marginBottom: 5,
+    fontFamily: 'Inter-SemiBold',
   },
   promoDescription: {
     fontSize: 14,
-    color: '#8E8E93',
-    marginBottom: 10,
+    color: Colors.light.subtext,
+    marginBottom: 15,
+    fontFamily: 'Inter-Regular',
   },
   promoCodeContainer: {
     backgroundColor: '#F0EFFE',
     borderRadius: 8,
-    padding: 10,
+    padding: 12,
     alignItems: 'center',
     marginBottom: 15,
   },
   promoCode: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#6C63FF',
+    color: Colors.light.primary,
+    fontFamily: 'Inter-SemiBold',
+    letterSpacing: 1,
   },
   promoButton: {
-    backgroundColor: '#6C63FF',
+    backgroundColor: Colors.light.primary,
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: 'center',
@@ -394,5 +481,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: 'Inter-SemiBold',
   },
 });
