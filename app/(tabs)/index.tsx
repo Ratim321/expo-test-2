@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Image, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MapPin, Search, Navigation, ChevronRight, Car } from 'lucide-react-native';
-import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Link } from 'expo-router';
 import Animated, { 
@@ -17,6 +16,19 @@ import Animated, {
 import Colors from '../../constants/Colors';
 import Logo from '../../components/Logo';
 import AnimatedPressable from '../../components/AnimatedPressable';
+
+// Conditionally import MapView based on platform
+// let MapView;
+// let Marker;
+// if (Platform.OS !== 'web') {
+//   try {
+//     const Maps = require('react-native-maps');
+//     MapView = Maps.default;
+//     Marker = Maps.Marker;
+//   } catch (error) {
+//     console.error('Failed to load react-native-maps:', error);
+//   }
+// }
 
 export default function HomeScreen() {
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
@@ -90,6 +102,51 @@ export default function HomeScreen() {
     },
   ];
 
+  // Render map or placeholder based on platform
+  const renderMap = () => {
+    if (Platform.OS === 'web') {
+      return (
+        <View style={[styles.map, styles.mapPlaceholder]}>
+          <Text style={styles.loadingText}>Map not available on web</Text>
+        </View>
+      );
+    }
+
+    if (location && MapView && Marker) {
+      return (
+        <Animated.View style={[styles.mapWrapper, mapAnimatedStyle]}>
+          <MapView
+            style={styles.map}
+            initialRegion={{
+              latitude: location.coords.latitude,
+              longitude: location.coords.longitude,
+              latitudeDelta: 0.0922,
+              longitudeDelta: 0.0421,
+            }}
+          >
+            <Marker
+              coordinate={{
+                latitude: location.coords.latitude,
+                longitude: location.coords.longitude,
+              }}
+              title="Your Location"
+            />
+          </MapView>
+        </Animated.View>
+      );
+    } else {
+      return (
+        <View style={[styles.map, styles.mapPlaceholder]}>
+          {errorMsg ? (
+            <Text style={styles.errorText}>{errorMsg}</Text>
+          ) : (
+            <Text style={styles.loadingText}>Loading map...</Text>
+          )}
+        </View>
+      );
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -106,35 +163,7 @@ export default function HomeScreen() {
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.mapContainer}>
-          {location ? (
-            <Animated.View style={[styles.mapWrapper, mapAnimatedStyle]}>
-              <MapView
-                style={styles.map}
-                initialRegion={{
-                  latitude: location.coords.latitude,
-                  longitude: location.coords.longitude,
-                  latitudeDelta: 0.0922,
-                  longitudeDelta: 0.0421,
-                }}
-              >
-                <Marker
-                  coordinate={{
-                    latitude: location.coords.latitude,
-                    longitude: location.coords.longitude,
-                  }}
-                  title="Your Location"
-                />
-              </MapView>
-            </Animated.View>
-          ) : (
-            <View style={[styles.map, styles.mapPlaceholder]}>
-              {errorMsg ? (
-                <Text style={styles.errorText}>{errorMsg}</Text>
-              ) : (
-                <Text style={styles.loadingText}>Loading map...</Text>
-              )}
-            </View>
-          )}
+          {renderMap()}
         </View>
 
         <Animated.View 

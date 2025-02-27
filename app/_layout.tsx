@@ -3,6 +3,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { SplashScreen } from 'expo-router';
+import { ToastProvider } from '../components/ToastProvider';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete
 SplashScreen.preventAutoHideAsync();
@@ -35,12 +36,12 @@ export default function RootLayout() {
   }
 
   return (
-    <>
+    <ToastProvider>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" options={{ title: 'Oops!' }} />
       </Stack>
       <StatusBar style="auto" />
-    </>
+    </ToastProvider>
   );
 }
