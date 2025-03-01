@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { Platform } from 'react-native';
-import { Chrome as Home, MapPin, User, Car, Clock, TriangleAlert as AlertTriangle } from 'lucide-react-native';
+import { Chrome as Home, MapPin, User, Car, TriangleAlert as AlertTriangle } from 'lucide-react-native';
 import Colors from '../../constants/Colors';
 
 export default function TabLayout() {
@@ -43,13 +43,6 @@ export default function TabLayout() {
         options={{
           title: 'SOS',
           tabBarIcon: ({ color, size }) => <AlertTriangle size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="history"
-        options={{
-          title: 'History',
-          tabBarIcon: ({ color, size }) => <Clock size={size} color={color} />,
         }}
       />
       <Tabs.Screen
