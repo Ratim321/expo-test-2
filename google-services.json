@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "265358126530",
+    "project_id": "expo-4341b",
+    "storage_bucket": "expo-4341b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:265358126530:android:dfa9fa7573b18acac83a5b",
+        "android_client_info": {
+          "package_name": "com.ratim.Ride"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBo95NqFMsHlLl1P3GivauMKzcBGtSXFWA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
