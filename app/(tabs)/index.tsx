@@ -1,157 +1,45 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Image, Platform } from 'react-native';
+import React, { useState } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TextInput, 
+  TouchableOpacity, 
+  ScrollView, 
+  Image, 
+  Platform,
+  Dimensions
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MapPin, Search, Navigation, ChevronRight, Car } from 'lucide-react-native';
-import * as Location from 'expo-location';
+import { Search, Plus, MapPin, Flag, Clock, ChevronRight, Bell, Chrome as HomeIcon, Car, TriangleAlert as AlertTriangle, Clock as ClockIcon, User } from 'lucide-react-native';
 import { Link } from 'expo-router';
 import Animated, { 
-  FadeInDown, 
-  FadeInRight,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-  withRepeat,
-  Easing
+  FadeInDown
 } from 'react-native-reanimated';
 import Colors from '../../constants/Colors';
-import Logo from '../../components/Logo';
 import AnimatedPressable from '../../components/AnimatedPressable';
 
-// Conditionally import MapView based on platform
-// let MapView;
-// let Marker;
-// if (Platform.OS !== 'web') {
-//   try {
-//     const Maps = require('react-native-maps');
-//     MapView = Maps.default;
-//     Marker = Maps.Marker;
-//   } catch (error) {
-//     console.error('Failed to load react-native-maps:', error);
-//   }
-// }
+const { width } = Dimensions.get('window');
 
 export default function HomeScreen() {
-  const [location, setLocation] = useState<Location.LocationObject | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [destination, setDestination] = useState('');
+  const [searchText, setSearchText] = useState('');
   
-  // Animation values
-  const searchBarScale = useSharedValue(1);
-  const mapOpacity = useSharedValue(0.8);
-
-  useEffect(() => {
-    (async () => {
-      if (Platform.OS !== 'web') {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-          setErrorMsg('Permission to access location was denied');
-          return;
-        }
-
-        const location = await Location.getCurrentPositionAsync({});
-        setLocation(location);
-      }
-    })();
-    
-    // Start subtle animations
-    mapOpacity.value = withRepeat(
-      withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
-      -1,
-      true
-    );
-  }, []);
-
-  const mapAnimatedStyle = useAnimatedStyle(() => {
-    return {
-      opacity: mapOpacity.value
-    };
-  });
-
-  const searchBarAnimatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ scale: searchBarScale.value }]
-    };
-  });
-
-  const handleSearchFocus = () => {
-    searchBarScale.value = withTiming(1.02, { duration: 200 });
-  };
-
-  const handleSearchBlur = () => {
-    searchBarScale.value = withTiming(1, { duration: 200 });
-  };
-
-  const quickRides = [
+  const recentActivity = [
     {
       id: '1',
-      name: 'University Campus',
-      area: 'North Campus',
-      icon: '🏫',
-    },
-    {
-      id: '2',
-      name: 'Downtown',
-      area: 'City Center',
+      title: 'Downtown',
+      subtitle: 'Autumn Park',
       icon: '🏙️',
-    },
-    {
-      id: '3',
-      name: 'Shopping Mall',
-      area: 'Commercial Area',
-      icon: '🛍️',
-    },
+      time: '2 days ago'
+    }
   ];
-
-  // Render map or placeholder based on platform
-  const renderMap = () => {
-    if (Platform.OS === 'web') {
-      return (
-        <View style={[styles.map, styles.mapPlaceholder]}>
-          <Text style={styles.loadingText}>Map not available on web</Text>
-        </View>
-      );
-    }
-
-    if (location && MapView && Marker) {
-      return (
-        <Animated.View style={[styles.mapWrapper, mapAnimatedStyle]}>
-          <MapView
-            style={styles.map}
-            initialRegion={{
-              latitude: location.coords.latitude,
-              longitude: location.coords.longitude,
-              latitudeDelta: 0.0922,
-              longitudeDelta: 0.0421,
-            }}
-          >
-            <Marker
-              coordinate={{
-                latitude: location.coords.latitude,
-                longitude: location.coords.longitude,
-              }}
-              title="Your Location"
-            />
-          </MapView>
-        </Animated.View>
-      );
-    } else {
-      return (
-        <View style={[styles.map, styles.mapPlaceholder]}>
-          {errorMsg ? (
-            <Text style={styles.errorText}>{errorMsg}</Text>
-          ) : (
-            <Text style={styles.loadingText}>Loading map...</Text>
-          )}
-        </View>
-      );
-    }
-  };
-
+  
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <View style={styles.logoContainer}>
-          <Logo />
+        <View style={styles.greeting}>
+          <Text style={styles.greetingText}>Hello, John!</Text>
+          <Text style={styles.readyText}>Ready to ride?</Text>
         </View>
         <TouchableOpacity style={styles.profileButton}>
           <Image
@@ -162,97 +50,150 @@ export default function HomeScreen() {
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.mapContainer}>
-          {renderMap()}
-        </View>
-
         <Animated.View 
           style={styles.searchContainer}
           entering={FadeInDown.delay(300).duration(500)}
         >
-          <Animated.View style={[styles.searchBar, searchBarAnimatedStyle]}>
-            <MapPin size={20} color={Colors.light.primary} style={styles.searchIcon} />
+          <View style={styles.searchBar}>
+            <Search size={20} color={Colors.light.subtext} style={styles.searchIcon} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Where to?"
-              value={destination}
-              onChangeText={setDestination}
-              onFocus={handleSearchFocus}
-              onBlur={handleSearchBlur}
+              placeholder="Search rides by destination name..."
+              value={searchText}
+              onChangeText={setSearchText}
               placeholderTextColor={Colors.light.subtext}
             />
-            <TouchableOpacity style={styles.searchButton}>
-              <Navigation size={20} color="#FFFFFF" />
-            </TouchableOpacity>
-          </Animated.View>
+          </View>
         </Animated.View>
 
         <Animated.View 
-          style={styles.quickRidesSection}
+          style={styles.quickActionsContainer}
           entering={FadeInDown.delay(400).duration(500)}
         >
-          <Text style={styles.sectionTitle}>Quick Rides</Text>
-          {quickRides.map((ride, index) => (
-            <Animated.View 
-              key={ride.id}
-              entering={FadeInRight.delay(500 + index * 100).duration(400)}
-            >
-              <Link href="/rides" asChild>
-                <AnimatedPressable style={styles.quickRideItem}>
-                  <View style={styles.quickRideIconContainer}>
-                    <Text style={styles.quickRideIcon}>{ride.icon}</Text>
-                  </View>
-                  <View style={styles.quickRideInfo}>
-                    <Text style={styles.quickRideName}>{ride.name}</Text>
-                    <Text style={styles.quickRideArea}>{ride.area}</Text>
-                  </View>
-                  <ChevronRight size={20} color={Colors.light.subtext} />
-                </AnimatedPressable>
-              </Link>
-            </Animated.View>
+          <AnimatedPressable style={styles.quickActionButton}>
+            <View style={styles.quickActionIconContainer}>
+              <Search size={24} color={Colors.light.primary} />
+            </View>
+            <Text style={styles.quickActionText}>Find a Ride</Text>
+          </AnimatedPressable>
+          
+          <AnimatedPressable style={styles.quickActionButton}>
+            <View style={styles.quickActionIconContainer}>
+              <Plus size={24} color={Colors.light.primary} />
+            </View>
+            <Text style={styles.quickActionText}>Create a Ride</Text>
+          </AnimatedPressable>
+          
+          <AnimatedPressable style={styles.quickActionButton}>
+            <View style={styles.quickActionIconContainer}>
+              <MapPin size={24} color={Colors.light.primary} />
+            </View>
+            <Text style={styles.quickActionText}>Saved</Text>
+          </AnimatedPressable>
+          
+          <AnimatedPressable style={styles.quickActionButton}>
+            <View style={styles.quickActionIconContainer}>
+              <Flag size={24} color={Colors.light.primary} />
+            </View>
+            <Text style={styles.quickActionText}>Report Issue</Text>
+          </AnimatedPressable>
+        </Animated.View>
+
+        <Animated.View 
+          style={styles.sectionContainer}
+          entering={FadeInDown.delay(500).duration(500)}
+        >
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Recent Activity</Text>
+            <TouchableOpacity>
+              <Text style={styles.sectionAction}>Show All</Text>
+            </TouchableOpacity>
+          </View>
+          
+          {recentActivity.map((activity) => (
+            <AnimatedPressable key={activity.id} style={styles.activityItem}>
+              <View style={styles.activityIconContainer}>
+                <Text style={styles.activityIcon}>{activity.icon}</Text>
+              </View>
+              <View style={styles.activityInfo}>
+                <Text style={styles.activityTitle}>{activity.title}</Text>
+                <Text style={styles.activitySubtitle}>{activity.subtitle}</Text>
+              </View>
+              <View style={styles.activityTimeContainer}>
+                <Clock size={14} color={Colors.light.subtext} />
+                <Text style={styles.activityTime}>{activity.time}</Text>
+              </View>
+            </AnimatedPressable>
           ))}
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(700).duration(500)}>
-          <Link href="/offer-ride" asChild>
-            <AnimatedPressable style={styles.offerRideButton}>
-              <View style={styles.offerRideIconContainer}>
-                <Car size={24} color={Colors.light.primary} />
-              </View>
-              <View style={styles.offerRideInfo}>
-                <Text style={styles.offerRideName}>Offer a Ride</Text>
-                <Text style={styles.offerRideDescription}>Share your trip with others</Text>
-              </View>
-              <ChevronRight size={20} color={Colors.light.subtext} />
-            </AnimatedPressable>
-          </Link>
+        <Animated.View 
+          style={styles.sectionContainer}
+          entering={FadeInDown.delay(600).duration(500)}
+        >
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Nearby Rides</Text>
+            <TouchableOpacity>
+              <Text style={styles.sectionAction}>Map View</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.mapPlaceholder}>
+            <Text style={styles.mapPlaceholderText}>Map View</Text>
+          </View>
         </Animated.View>
 
         <Animated.View 
-          style={styles.promoSection}
-          entering={FadeInDown.delay(800).duration(500)}
+          style={styles.sectionContainer}
+          entering={FadeInDown.delay(700).duration(500)}
         >
-          <Text style={styles.sectionTitle}>Invite Friends & Get Discount</Text>
-          <View style={styles.promoCard}>
-            <Image
-              source={{ uri: 'https://images.unsplash.com/photo-1521791136064-7986c2920216?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80' }}
-              style={styles.promoImage}
-            />
-            <View style={styles.promoContent}>
-              <Text style={styles.promoTitle}>Invite on Ride</Text>
-              <Text style={styles.promoDescription}>
-                Share this code with friends & family members
-              </Text>
-              <View style={styles.promoCodeContainer}>
-                <Text style={styles.promoCode}>RIDE2023</Text>
-              </View>
-              <AnimatedPressable style={styles.promoButton}>
-                <Text style={styles.promoButtonText}>Invite</Text>
-              </AnimatedPressable>
-            </View>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Notifications</Text>
           </View>
+          
+          <AnimatedPressable style={styles.notificationItem}>
+            <View style={styles.notificationIconContainer}>
+              <Bell size={20} color="#FFFFFF" />
+            </View>
+            <View style={styles.notificationContent}>
+              <Text style={styles.notificationTitle}>New ride alerts found!</Text>
+              <Text style={styles.notificationSubtitle}>Compare 3 routes to Downtown</Text>
+            </View>
+            <ChevronRight size={20} color={Colors.light.subtext} />
+          </AnimatedPressable>
         </Animated.View>
+        
+        {/* Add extra padding at the bottom for the tab bar */}
+        <View style={styles.bottomPadding} />
       </ScrollView>
+      
+      {/* Bottom Tab Bar */}
+      <View style={styles.customTabBar}>
+        <TouchableOpacity style={styles.tabItem}>
+          <HomeIcon size={24} color={Colors.light.primary} />
+          <Text style={[styles.tabLabel, styles.activeTabLabel]}>Home</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.tabItem}>
+          <Car size={24} color={Colors.light.subtext} />
+          <Text style={styles.tabLabel}>Rides</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.tabItem}>
+          <AlertTriangle size={24} color={Colors.light.subtext} />
+          <Text style={styles.tabLabel}>SOS</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.tabItem}>
+          <ClockIcon size={24} color={Colors.light.subtext} />
+          <Text style={styles.tabLabel}>History</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.tabItem}>
+          <User size={24} color={Colors.light.subtext} />
+          <Text style={styles.tabLabel}>Profile</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -266,20 +207,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: Colors.light.card,
     borderBottomWidth: 1,
     borderBottomColor: Colors.light.border,
   },
-  logoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  greeting: {
+    flex: 1,
   },
-  logoText: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: Colors.light.primary,
+  greetingText: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: Colors.light.text,
+    fontFamily: 'Inter-SemiBold',
+  },
+  readyText: {
+    fontSize: 14,
+    color: Colors.light.subtext,
+    fontFamily: 'Inter-Regular',
+    marginTop: 2,
   },
   profileButton: {
     width: 40,
@@ -296,60 +243,22 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  mapContainer: {
-    height: 200,
-    marginHorizontal: 20,
-    marginTop: 20,
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  mapWrapper: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  map: {
-    width: '100%',
-    height: '100%',
-  },
-  mapPlaceholder: {
-    backgroundColor: '#E1E4E8',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  errorText: {
-    color: Colors.light.error,
-    textAlign: 'center',
-  },
-  loadingText: {
-    color: Colors.light.subtext,
-    textAlign: 'center',
-  },
   searchContainer: {
-    paddingHorizontal: 20,
-    marginTop: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.light.card,
-    borderRadius: 12,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
   },
   searchIcon: {
-    marginRight: 10,
+    marginRight: 8,
   },
   searchInput: {
     flex: 1,
@@ -357,159 +266,185 @@ const styles = StyleSheet.create({
     color: Colors.light.text,
     fontFamily: 'Inter-Regular',
   },
-  searchButton: {
-    backgroundColor: Colors.light.primary,
-    borderRadius: 8,
-    padding: 8,
+  quickActionsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    marginBottom: 16,
   },
-  quickRidesSection: {
-    marginTop: 25,
-    paddingHorizontal: 20,
+  quickActionButton: {
+    width: (width - 40) / 2,
+    backgroundColor: Colors.light.card,
+    borderRadius: 8,
+    padding: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    height: 90,
+  },
+  quickActionIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: '#F0EFFE',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  quickActionText: {
+    fontSize: 14,
+    color: Colors.light.text,
+    fontFamily: 'Inter-Medium',
+    textAlign: 'center',
+  },
+  sectionContainer: {
+    paddingHorizontal: 16,
+    marginBottom: 16,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: Colors.light.text,
-    marginBottom: 15,
     fontFamily: 'Inter-SemiBold',
   },
-  quickRideItem: {
+  sectionAction: {
+    fontSize: 14,
+    color: Colors.light.primary,
+    fontFamily: 'Inter-Medium',
+  },
+  activityItem: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.light.card,
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  quickRideIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F0EFFE',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 15,
-  },
-  quickRideIcon: {
-    fontSize: 20,
-  },
-  quickRideInfo: {
-    flex: 1,
-  },
-  quickRideName: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: Colors.light.text,
-    fontFamily: 'Inter-Medium',
-  },
-  quickRideArea: {
-    fontSize: 14,
-    color: Colors.light.subtext,
-    marginTop: 2,
-    fontFamily: 'Inter-Regular',
-  },
-  offerRideButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.light.card,
-    borderRadius: 12,
-    padding: 15,
-    marginHorizontal: 20,
-    marginTop: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  offerRideIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F0EFFE',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 15,
-  },
-  offerRideInfo: {
-    flex: 1,
-  },
-  offerRideName: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: Colors.light.text,
-    fontFamily: 'Inter-Medium',
-  },
-  offerRideDescription: {
-    fontSize: 14,
-    color: Colors.light.subtext,
-    marginTop: 2,
-    fontFamily: 'Inter-Regular',
-  },
-  promoSection: {
-    marginTop: 25,
-    paddingHorizontal: 20,
-    marginBottom: 30,
-  },
-  promoCard: {
-    backgroundColor: Colors.light.card,
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  promoImage: {
-    width: '100%',
-    height: 120,
-  },
-  promoContent: {
-    padding: 20,
-  },
-  promoTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: Colors.light.text,
-    marginBottom: 5,
-    fontFamily: 'Inter-SemiBold',
-  },
-  promoDescription: {
-    fontSize: 14,
-    color: Colors.light.subtext,
-    marginBottom: 15,
-    fontFamily: 'Inter-Regular',
-  },
-  promoCodeContainer: {
-    backgroundColor: '#F0EFFE',
     borderRadius: 8,
     padding: 12,
-    alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
   },
-  promoCode: {
+  activityIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F0EFFE',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  activityIcon: {
     fontSize: 18,
-    fontWeight: '600',
-    color: Colors.light.primary,
-    fontFamily: 'Inter-SemiBold',
-    letterSpacing: 1,
   },
-  promoButton: {
-    backgroundColor: Colors.light.primary,
-    borderRadius: 8,
-    paddingVertical: 12,
+  activityInfo: {
+    flex: 1,
+  },
+  activityTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: Colors.light.text,
+    fontFamily: 'Inter-Medium',
+  },
+  activitySubtitle: {
+    fontSize: 14,
+    color: Colors.light.subtext,
+    fontFamily: 'Inter-Regular',
+    marginTop: 2,
+  },
+  activityTimeContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
   },
-  promoButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Inter-SemiBold',
+  activityTime: {
+    fontSize: 12,
+    color: Colors.light.subtext,
+    fontFamily: 'Inter-Regular',
+    marginLeft: 4,
   },
+  mapPlaceholder: {
+    height: 180,
+    backgroundColor: '#E1E4E8',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  mapPlaceholderText: {
+    fontSize: 16,
+    color: Colors.light.subtext,
+    fontFamily: 'Inter-Medium',
+  },
+  notificationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.light.card,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+  },
+  notificationIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.light.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  notificationContent: {
+    flex: 1,
+  },
+  notificationTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: Colors.light.text,
+    fontFamily: 'Inter-Medium',
+  },
+  notificationSubtitle: {
+    fontSize: 14,
+    color: Colors.light.subtext,
+    fontFamily: 'Inter-Regular',
+    marginTop: 2,
+  },
+  bottomPadding: {
+    height: 80,
+  },
+  customTabBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    backgroundColor: Colors.light.card,
+    borderTopWidth: 1,
+    borderTopColor: Colors.light.border,
+    paddingVertical: 8,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 60,
+  },
+  tabItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+  },
+  tabLabel: {
+    fontSize: 12,
+    color: Colors.light.subtext,
+    marginTop: 4,
+    fontFamily: 'Inter-Regular',
+  },
+  activeTabLabel: {
+    color: Colors.light.primary,
+    fontFamily: 'Inter-Medium',
+  }
 });

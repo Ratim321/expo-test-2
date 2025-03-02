@@ -1,266 +1,331 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image } from 'react-native';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TextInput, 
+  TouchableOpacity, 
+  ScrollView,
+  Platform,
+  Dimensions
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MapPin, Clock, Users, ChevronRight, Filter } from 'lucide-react-native';
+import { 
+  MapPin, 
+  Calendar, 
+  Clock, 
+  ChevronDown, 
+  Car as CarIcon, 
+  Truck, 
+  Bike,
+  Bell,
+  Chrome as HomeIcon,
+  Car,
+  TriangleAlert as AlertTriangle,
+  Clock as ClockIcon,
+  User
+} from 'lucide-react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import Colors from '../../constants/Colors';
 import { useToast } from '../../components/ToastProvider';
-import Animated, { FadeInUp } from 'react-native-reanimated';
 import AnimatedPressable from '../../components/AnimatedPressable';
 
+const { width } = Dimensions.get('window');
+
 export default function RidesScreen() {
-  const [activeTab, setActiveTab] = useState('available');
+  const [activeTab, setActiveTab] = useState('create');
+  const [startingPoint, setStartingPoint] = useState('');
+  const [destination, setDestination] = useState('');
+  const [date, setDate] = useState('');
+  const [time, setTime] = useState('');
+  const [vehicleType, setVehicleType] = useState('car');
+  const [gender, setGender] = useState('any');
+  const [riders, setRiders] = useState('1 Rider');
+  const [notes, setNotes] = useState('');
   const { showToast } = useToast();
-  const [availableRides, setAvailableRides] = useState([
-    {
-      id: '1',
-      driver: {
-        name: 'John Doe',
-        rating: 4.8,
-        image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80',
-      },
-      from: 'University Campus',
-      to: 'Downtown',
-      time: '10:30 AM',
-      date: 'Today',
-      price: '$5.50',
-      seats: {
-        total: 4,
-        available: 2,
-      },
-      vehicle: 'Toyota Corolla',
-      joined: false,
-    },
-    {
-      id: '2',
-      driver: {
-        name: 'Sarah Johnson',
-        rating: 4.9,
-        image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80',
-      },
-      from: 'Shopping Mall',
-      to: 'Residential Area',
-      time: '2:15 PM',
-      date: 'Today',
-      price: '$4.25',
-      seats: {
-        total: 4,
-        available: 3,
-      },
-      vehicle: 'Honda Civic',
-      joined: false,
-    },
-    {
-      id: '3',
-      driver: {
-        name: 'Michael Brown',
-        rating: 4.7,
-        image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80',
-      },
-      from: 'City Center',
-      to: 'Airport',
-      time: '5:45 PM',
-      date: 'Tomorrow',
-      price: '$12.00',
-      seats: {
-        total: 4,
-        available: 1,
-      },
-      vehicle: 'Nissan Altima',
-      joined: false,
-    },
-  ]);
 
-  const [myRides, setMyRides] = useState([
-    {
-      id: '4',
-      driver: {
-        name: 'You',
-        rating: 4.9,
-        image: 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80',
-      },
-      from: 'Home',
-      to: 'Office',
-      time: '8:30 AM',
-      date: 'Tomorrow',
-      price: '$6.00',
-      seats: {
-        total: 4,
-        available: 3,
-      },
-      vehicle: 'Your Car',
-      status: 'scheduled',
-    },
-  ]);
-
-  const handleJoinRide = (id: string) => {
-    // Update the ride status
-    setAvailableRides(prevRides => 
-      prevRides.map(ride => {
-        if (ride.id === id) {
-          // If already joined, cancel the ride
-          if (ride.joined) {
-            showToast(`Cancelled ride to ${ride.to}`, 'info');
-            return {
-              ...ride,
-              joined: false,
-              seats: {
-                ...ride.seats,
-                available: ride.seats.available + 1
-              }
-            };
-          } else {
-            // If seats are available, join the ride
-            if (ride.seats.available > 0) {
-              // Add to my rides
-              const newRide = {
-                id: `joined-${ride.id}`,
-                driver: ride.driver,
-                from: ride.from,
-                to: ride.to,
-                time: ride.time,
-                date: ride.date,
-                price: ride.price,
-                seats: {
-                  total: 1,
-                  available: 0,
-                },
-                vehicle: ride.vehicle,
-                status: 'scheduled',
-              };
-              
-              setMyRides(prev => [...prev, newRide]);
-              
-              showToast(`Successfully joined ride to ${ride.to}`, 'success');
-              return {
-                ...ride,
-                joined: true,
-                seats: {
-                  ...ride.seats,
-                  available: ride.seats.available - 1
-                }
-              };
-            } else {
-              // No seats available
-              showToast('No seats available for this ride', 'error');
-              return ride;
-            }
-          }
-        }
-        return ride;
-      })
-    );
+  const handleCreateRide = () => {
+    if (!startingPoint || !destination || !date || !time) {
+      showToast('Please fill in all required fields', 'error');
+      return;
+    }
+    
+    showToast('Ride created successfully!', 'success');
+    // In a real app, this would save the ride to a database
   };
 
-  const renderRideItem = ({ item, index }) => (
-    <Animated.View entering={FadeInUp.delay(index * 100).duration(400)}>
-      <AnimatedPressable style={styles.rideCard}>
-        <View style={styles.rideHeader}>
-          <View style={styles.driverInfo}>
-            <Image source={{ uri: item.driver.image }} style={styles.driverImage} />
-            <View>
-              <Text style={styles.driverName}>{item.driver.name}</Text>
-              <View style={styles.ratingContainer}>
-                <Text style={styles.ratingText}>{item.driver.rating}</Text>
-                <Text style={styles.ratingStars}>★★★★★</Text>
-              </View>
-            </View>
-          </View>
-          <Text style={styles.priceText}>{item.price}</Text>
-        </View>
-
-        <View style={styles.routeContainer}>
-          <View style={styles.routePoints}>
-            <View style={styles.routePointDot} />
-            <View style={styles.routeLine} />
-            <View style={[styles.routePointDot, styles.routePointDotDestination]} />
-          </View>
-          <View style={styles.routeDetails}>
-            <View style={styles.routePoint}>
-              <Text style={styles.routePointText}>{item.from}</Text>
-            </View>
-            <View style={styles.routePoint}>
-              <Text style={styles.routePointText}>{item.to}</Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.rideDetails}>
-          <View style={styles.rideDetailItem}>
-            <Clock size={16} color="#8E8E93" />
-            <Text style={styles.rideDetailText}>{item.time}, {item.date}</Text>
-          </View>
-          <View style={styles.rideDetailItem}>
-            <Users size={16} color="#8E8E93" />
-            <Text style={styles.rideDetailText}>{item.seats.available} seats available</Text>
-          </View>
-        </View>
-
-        <View style={styles.rideFooter}>
-          <Text style={styles.vehicleText}>{item.vehicle}</Text>
-          {activeTab === 'available' ? (
-            <TouchableOpacity 
-              style={[
-                styles.joinButton, 
-                item.joined && styles.joinedButton,
-                item.seats.available === 0 && !item.joined && styles.disabledButton
-              ]}
-              onPress={() => handleJoinRide(item.id)}
-              disabled={item.seats.available === 0 && !item.joined}
-            >
-              <Text style={styles.joinButtonText}>
-                {item.joined ? 'Cancel' : 'Join Ride'}
-              </Text>
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.statusContainer}>
-              <Text style={[styles.statusText, { color: item.status === 'scheduled' ? '#6C63FF' : '#FF3B30' }]}>
-                {item.status === 'scheduled' ? 'Scheduled' : 'Cancelled'}
-              </Text>
-            </View>
-          )}
-        </View>
-      </AnimatedPressable>
-    </Animated.View>
-  );
+  const handleSaveDraft = () => {
+    showToast('Draft saved successfully!', 'success');
+    // In a real app, this would save the ride as a draft
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Available Rides</Text>
-        <TouchableOpacity 
-          style={styles.filterButton}
-          onPress={() => showToast('Filters coming soon!', 'info')}
-        >
-          <Filter size={20} color="#6C63FF" />
-        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Rides</Text>
+        <View style={styles.headerIcons}>
+          <TouchableOpacity style={styles.headerIcon}>
+            <Bell size={20} color={Colors.light.text} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.profileButton}>
+            <User size={20} color={Colors.light.text} />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      <View style={styles.tabContainer}>
-        <TouchableOpacity
+      <View style={styles.tabsContainer}>
+        <TouchableOpacity 
+          style={[styles.tabButton, activeTab === 'create' && styles.activeTabButton]}
+          onPress={() => setActiveTab('create')}
+        >
+          <Text style={[styles.tabText, activeTab === 'create' && styles.activeTabText]}>
+            Create Ride
+          </Text>
+          {activeTab === 'create' && <View style={styles.activeTabIndicator} />}
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
           style={[styles.tabButton, activeTab === 'available' && styles.activeTabButton]}
           onPress={() => setActiveTab('available')}
         >
-          <Text style={[styles.tabText, activeTab === 'available' && styles.activeTabText]}>Available Rides</Text>
+          <Text style={[styles.tabText, activeTab === 'available' && styles.activeTabText]}>
+            Available Rides
+          </Text>
+          {activeTab === 'available' && <View style={styles.activeTabIndicator} />}
         </TouchableOpacity>
-        <TouchableOpacity
+        
+        <TouchableOpacity 
           style={[styles.tabButton, activeTab === 'my' && styles.activeTabButton]}
           onPress={() => setActiveTab('my')}
         >
-          <Text style={[styles.tabText, activeTab === 'my' && styles.activeTabText]}>My Rides</Text>
+          <Text style={[styles.tabText, activeTab === 'my' && styles.activeTabText]}>
+            My Rides
+          </Text>
+          {activeTab === 'my' && <View style={styles.activeTabIndicator} />}
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        data={activeTab === 'available' ? availableRides : myRides}
-        renderItem={renderRideItem}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.ridesList}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No rides available</Text>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {activeTab === 'create' && (
+          <Animated.View 
+            style={styles.formContainer}
+            entering={FadeInDown.delay(300).duration(500)}
+          >
+            <View style={styles.inputGroup}>
+              <View style={styles.inputContainer}>
+                <MapPin size={20} color={Colors.light.subtext} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Starting Point"
+                  value={startingPoint}
+                  onChangeText={setStartingPoint}
+                  placeholderTextColor={Colors.light.subtext}
+                />
+                <MapPin size={20} color={Colors.light.subtext} />
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <View style={styles.inputContainer}>
+                <MapPin size={20} color={Colors.light.subtext} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Destination"
+                  value={destination}
+                  onChangeText={setDestination}
+                  placeholderTextColor={Colors.light.subtext}
+                />
+                <MapPin size={20} color={Colors.light.subtext} />
+              </View>
+            </View>
+
+            <View style={styles.dateTimeContainer}>
+              <View style={[styles.inputContainer, styles.dateInput]}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="mm/dd/yyyy"
+                  value={date}
+                  onChangeText={setDate}
+                  placeholderTextColor={Colors.light.subtext}
+                />
+                <Calendar size={20} color={Colors.light.subtext} />
+              </View>
+
+              <View style={[styles.inputContainer, styles.timeInput]}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="--:-- --"
+                  value={time}
+                  onChangeText={setTime}
+                  placeholderTextColor={Colors.light.subtext}
+                />
+                <Clock size={20} color={Colors.light.subtext} />
+              </View>
+            </View>
+
+            <View style={styles.vehicleTypeContainer}>
+              <TouchableOpacity 
+                style={[styles.vehicleButton, vehicleType === 'car' && styles.selectedVehicleButton]}
+                onPress={() => setVehicleType('car')}
+              >
+                <CarIcon 
+                  size={24} 
+                  color={vehicleType === 'car' ? Colors.light.primary : Colors.light.text} 
+                />
+                <Text style={[styles.vehicleText, vehicleType === 'car' && styles.selectedVehicleText]}>
+                  Car
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.vehicleButton, vehicleType === 'cng' && styles.selectedVehicleButton]}
+                onPress={() => setVehicleType('cng')}
+              >
+                <Truck 
+                  size={24} 
+                  color={vehicleType === 'cng' ? Colors.light.primary : Colors.light.text} 
+                />
+                <Text style={[styles.vehicleText, vehicleType === 'cng' && styles.selectedVehicleText]}>
+                  CNG
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.vehicleButton, vehicleType === 'rickshaw' && styles.selectedVehicleButton]}
+                onPress={() => setVehicleType('rickshaw')}
+              >
+                <Bike 
+                  size={24} 
+                  color={vehicleType === 'rickshaw' ? Colors.light.primary : Colors.light.text} 
+                />
+                <Text style={[styles.vehicleText, vehicleType === 'rickshaw' && styles.selectedVehicleText]}>
+                  Rickshaw
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.genderContainer}>
+              <View style={styles.genderOption}>
+                <TouchableOpacity 
+                  style={styles.radioButton}
+                  onPress={() => setGender('male')}
+                >
+                  <View style={[styles.radioOuter, gender === 'male' && styles.radioOuterSelected]}>
+                    {gender === 'male' && <View style={styles.radioInner} />}
+                  </View>
+                </TouchableOpacity>
+                <Text style={styles.genderText}>Male</Text>
+              </View>
+
+              <View style={styles.genderOption}>
+                <TouchableOpacity 
+                  style={styles.radioButton}
+                  onPress={() => setGender('female')}
+                >
+                  <View style={[styles.radioOuter, gender === 'female' && styles.radioOuterSelected]}>
+                    {gender === 'female' && <View style={styles.radioInner} />}
+                  </View>
+                </TouchableOpacity>
+                <Text style={styles.genderText}>Female</Text>
+              </View>
+
+              <View style={styles.genderOption}>
+                <TouchableOpacity 
+                  style={styles.radioButton}
+                  onPress={() => setGender('any')}
+                >
+                  <View style={[styles.radioOuter, gender === 'any' && styles.radioOuterSelected]}>
+                    {gender === 'any' && <View style={styles.radioInner} />}
+                  </View>
+                </TouchableOpacity>
+                <Text style={styles.genderText}>Any</Text>
+              </View>
+            </View>
+
+            <View style={styles.ridersContainer}>
+              <Text style={styles.ridersLabel}>Number of Co-Riders</Text>
+              <TouchableOpacity style={styles.ridersSelector}>
+                <Text style={styles.ridersText}>{riders}</Text>
+                <ChevronDown size={20} color={Colors.light.text} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <View style={[styles.inputContainer, styles.notesInput]}>
+                <TextInput
+                  style={[styles.input, styles.multilineInput]}
+                  placeholder="Additional Notes (optional)"
+                  value={notes}
+                  onChangeText={setNotes}
+                  placeholderTextColor={Colors.light.subtext}
+                  multiline
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                />
+              </View>
+            </View>
+
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity 
+                style={styles.createButton}
+                onPress={handleCreateRide}
+              >
+                <Text style={styles.createButtonText}>Create Ride</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.draftButton}
+                onPress={handleSaveDraft}
+              >
+                <Text style={styles.draftButtonText}>Save Draft</Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        )}
+
+        {activeTab === 'available' && (
+          <View style={styles.emptyStateContainer}>
+            <Text style={styles.emptyStateText}>No available rides at the moment</Text>
           </View>
-        }
-      />
+        )}
+
+        {activeTab === 'my' && (
+          <View style={styles.emptyStateContainer}>
+            <Text style={styles.emptyStateText}>You haven't created any rides yet</Text>
+          </View>
+        )}
+        
+        {/* Add extra padding at the bottom for the tab bar */}
+        <View style={styles.bottomPadding} />
+      </ScrollView>
+      
+      {/* Bottom Tab Bar */}
+      <View style={styles.customTabBar}>
+        <TouchableOpacity style={styles.tabItem}>
+          <HomeIcon size={24} color={Colors.light.subtext} />
+          <Text style={styles.tabLabel}>Home</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.tabItem}>
+          <Car size={24} color={Colors.light.primary} />
+          <Text style={[styles.tabLabel, styles.activeTabLabel]}>Rides</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.tabItem}>
+          <AlertTriangle size={24} color={Colors.light.subtext} />
+          <Text style={styles.tabLabel}>SOS</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.tabItem}>
+          <ClockIcon size={24} color={Colors.light.subtext} />
+          <Text style={styles.tabLabel}>History</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.tabItem}>
+          <User size={24} color={Colors.light.subtext} />
+          <Text style={styles.tabLabel}>Profile</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -268,210 +333,283 @@ export default function RidesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: Colors.light.background,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: Colors.light.card,
     borderBottomWidth: 1,
-    borderBottomColor: '#EEEEEE',
+    borderBottomColor: Colors.light.border,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#333333',
+    color: Colors.light.text,
     fontFamily: 'Inter-SemiBold',
   },
-  filterButton: {
-    padding: 8,
-  },
-  tabContainer: {
+  headerIcons: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingBottom: 15,
+    alignItems: 'center',
+  },
+  headerIcon: {
+    marginRight: 16,
+  },
+  profileButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F0F0F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  tabsContainer: {
+    flexDirection: 'row',
+    backgroundColor: Colors.light.card,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.border,
   },
   tabButton: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 12,
     alignItems: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
+    position: 'relative',
   },
   activeTabButton: {
-    borderBottomColor: '#6C63FF',
+    backgroundColor: Colors.light.card,
   },
   tabText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#8E8E93',
+    fontSize: 14,
+    color: Colors.light.subtext,
     fontFamily: 'Inter-Medium',
   },
   activeTabText: {
-    color: '#6C63FF',
-  },
-  ridesList: {
-    padding: 20,
-  },
-  rideCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  rideHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  driverInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  driverImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 10,
-  },
-  driverName: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#333333',
-    fontFamily: 'Inter-Medium',
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 2,
-  },
-  ratingText: {
-    fontSize: 14,
-    color: '#8E8E93',
-    marginRight: 5,
-    fontFamily: 'Inter-Regular',
-  },
-  ratingStars: {
-    fontSize: 12,
-    color: '#FFD700',
-  },
-  priceText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#6C63FF',
+    color: Colors.light.primary,
     fontFamily: 'Inter-SemiBold',
   },
-  routeContainer: {
-    flexDirection: 'row',
-    marginBottom: 15,
+  activeTabIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    left: '25%',
+    right: '25%',
+    height: 3,
+    backgroundColor: Colors.light.primary,
+    borderTopLeftRadius: 3,
+    borderTopRightRadius: 3,
   },
-  routePoints: {
-    width: 20,
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  routePointDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#6C63FF',
-  },
-  routePointDotDestination: {
-    backgroundColor: '#FF3B30',
-  },
-  routeLine: {
-    width: 2,
-    height: 30,
-    backgroundColor: '#E0E0E0',
-    marginVertical: 5,
-  },
-  routeDetails: {
+  scrollView: {
     flex: 1,
   },
-  routePoint: {
-    height: 25,
-    justifyContent: 'center',
-    marginBottom: 5,
+  formContainer: {
+    padding: 16,
   },
-  routePointText: {
-    fontSize: 15,
-    color: '#333333',
-    fontFamily: 'Inter-Regular',
+  inputGroup: {
+    marginBottom: 12,
   },
-  rideDetails: {
-    flexDirection: 'row',
-    marginBottom: 15,
-  },
-  rideDetailItem: {
+  inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 20,
+    backgroundColor: Colors.light.card,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 0,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
   },
-  rideDetailText: {
-    fontSize: 14,
-    color: '#8E8E93',
-    marginLeft: 5,
+  inputIcon: {
+    marginRight: 8,
+  },
+  input: {
+    flex: 1,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: Colors.light.text,
     fontFamily: 'Inter-Regular',
   },
-  rideFooter: {
+  dateTimeContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  dateInput: {
+    width: '48%',
+  },
+  timeInput: {
+    width: '48%',
+  },
+  vehicleTypeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  vehicleButton: {
+    width: '31%',
+    backgroundColor: Colors.light.card,
+    borderRadius: 8,
+    padding: 12,
     alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: '#EEEEEE',
-    paddingTop: 15,
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+  },
+  selectedVehicleButton: {
+    borderColor: Colors.light.primary,
+    backgroundColor: '#F0EFFE',
   },
   vehicleText: {
     fontSize: 14,
-    color: '#8E8E93',
+    color: Colors.light.text,
+    fontFamily: 'Inter-Medium',
+    marginTop: 4,
+  },
+  selectedVehicleText: {
+    color: Colors.light.primary,
+  },
+  genderContainer: {
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
+  genderOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 24,
+  },
+  radioButton: {
+    marginRight: 8,
+  },
+  radioOuter: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: Colors.light.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  radioOuterSelected: {
+    borderColor: Colors.light.primary,
+  },
+  radioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: Colors.light.primary,
+  },
+  genderText: {
+    fontSize: 14,
+    color: Colors.light.text,
     fontFamily: 'Inter-Regular',
   },
-  joinButton: {
-    backgroundColor: '#6C63FF',
+  ridersContainer: {
+    marginBottom: 16,
+  },
+  ridersLabel: {
+    fontSize: 14,
+    color: Colors.light.text,
+    fontFamily: 'Inter-SemiBold',
+    marginBottom: 8,
+  },
+  ridersSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.light.card,
     borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+  },
+  ridersText: {
+    fontSize: 16,
+    color: Colors.light.text,
+    fontFamily: 'Inter-Regular',
+  },
+  notesInput: {
     paddingVertical: 8,
-    paddingHorizontal: 15,
   },
-  joinedButton: {
-    backgroundColor: '#FF3B30',
+  multilineInput: {
+    height: 100,
+    textAlignVertical: 'top',
   },
-  disabledButton: {
-    backgroundColor: '#CCCCCC',
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 16,
   },
-  joinButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '500',
-    fontFamily: 'Inter-Medium',
-  },
-  statusContainer: {
+  createButton: {
+    backgroundColor: '#1A1A1A',
     borderRadius: 8,
-    paddingVertical: 5,
-    paddingHorizontal: 10,
+    paddingVertical: 14,
+    alignItems: 'center',
+    width: '48%',
   },
-  statusText: {
-    fontSize: 14,
-    fontWeight: '500',
-    fontFamily: 'Inter-Medium',
+  createButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'Inter-SemiBold',
   },
-  emptyContainer: {
+  draftButton: {
+    backgroundColor: Colors.light.card,
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: 'center',
+    width: '48%',
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+  },
+  draftButtonText: {
+    color: Colors.light.text,
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'Inter-SemiBold',
+  },
+  emptyStateContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  emptyStateText: {
+    fontSize: 16,
+    color: Colors.light.subtext,
+    fontFamily: 'Inter-Regular',
+    textAlign: 'center',
+  },
+  bottomPadding: {
+    height: 80,
+  },
+  customTabBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    backgroundColor: Colors.light.card,
+    borderTopWidth: 1,
+    borderTopColor: Colors.light.border,
+    paddingVertical: 8,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 60,
+  },
+  tabItem: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 30,
+    flex: 1,
   },
-  emptyText: {
-    fontSize: 16,
-    color: '#8E8E93',
+  tabLabel: {
+    fontSize: 12,
+    color: Colors.light.subtext,
+    marginTop: 4,
     fontFamily: 'Inter-Regular',
   },
+  activeTabLabel: {
+    color: Colors.light.primary,
+    fontFamily: 'Inter-Medium',
+  }
 });
