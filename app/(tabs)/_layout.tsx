@@ -1,6 +1,14 @@
 import { Tabs } from 'expo-router';
 import { Platform } from 'react-native';
-import { Chrome as Home, MapPin, User, Car, Clock, TriangleAlert as AlertTriangle, FileWarning } from 'lucide-react-native';
+import {
+  Chrome as Home,
+  MapPin,
+  User,
+  Car,
+  Clock,
+  TriangleAlert as AlertTriangle,
+  FileWarning,
+} from 'lucide-react-native';
 import Colors from '../../constants/Colors';
 
 export default function TabLayout() {
@@ -23,7 +31,8 @@ export default function TabLayout() {
           fontSize: 12,
         },
         headerShown: false,
-      }}>
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
@@ -31,18 +40,14 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => <Home size={size} color={color} />,
         }}
       />
-      <Tabs.Screen
-        name="rides"
-        options={{
-          title: 'Rides',
-          tabBarIcon: ({ color, size }) => <Car size={size} color={color} />,
-        }}
-      />
+
       <Tabs.Screen
         name="report"
         options={{
           title: 'Report',
-          tabBarIcon: ({ color, size }) => <FileWarning size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <FileWarning size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -57,6 +62,13 @@ export default function TabLayout() {
         options={{
           title: 'Profile',
           tabBarIcon: ({ color, size }) => <User size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="rides" // Explicitly define rides as a tab
+        options={{
+          title: 'Rides',
+          tabBarIcon: ({ color, size }) => <Car size={size} color={color} />, // Example icon
         }}
       />
     </Tabs>

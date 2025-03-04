@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router';
 
-export default function RidesLayout() {
+export default function RideFeaturesLayout() {  // Update the function name
   return (
     <Stack>
       <Stack.Screen name="index" options={{ headerShown: false }} />
