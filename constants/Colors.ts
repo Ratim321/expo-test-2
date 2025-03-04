@@ -1,16 +1,14 @@
 const tintColorLight = '#2A3990';
 const tintColorDark = '#4E4FEB';
 
-export const Colors = {
+export default {
   light: {
-    primary: '#2A3990',
-    secondary: '#4E4FEB',
-    accent: '#5D5FEF',
-    background: '#F8F9FA',
+    primary: '#6C63FF',
+    background: '#FFFFFF',
     card: '#FFFFFF',
-    text: '#333333',
-    subtext: '#8E8E93',
-    border: '#EEEEEE',
+    text: '#1A1A1A',
+    subtext: '#666666',
+    border: '#E5E5E5',
     notification: '#FF3B30',
     success: '#34C759',
     warning: '#FFCC00',
@@ -20,13 +18,11 @@ export const Colors = {
     tabIconSelected: '#2A3990',
   },
   dark: {
-    primary: '#4E4FEB',
-    secondary: '#2A3990',
-    accent: '#5D5FEF',
+    primary: '#6C63FF',
     background: '#121212',
     card: '#1E1E1E',
-    text: '#F8F9FA',
-    subtext: '#A9A9A9',
+    text: '#FFFFFF',
+    subtext: '#A0A0A0',
     border: '#2C2C2C',
     notification: '#FF453A',
     success: '#30D158',

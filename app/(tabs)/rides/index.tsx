@@ -33,9 +33,9 @@ import {
   MessageCircle
 } from 'lucide-react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import Colors from '../../constants/Colors';
-import { useToast } from '../../components/ToastProvider';
-import AnimatedPressable from '../../components/AnimatedPressable';
+import Colors from '../../../constants/Colors';
+import { useToast } from '../../../components/ToastProvider';
+import AnimatedPressable from '../../../components/AnimatedPressable';
 import { router } from 'expo-router';
 
 const { width } = Dimensions.get('window');
