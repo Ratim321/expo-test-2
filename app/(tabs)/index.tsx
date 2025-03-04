@@ -23,7 +23,8 @@ import { Link } from 'expo-router';
 import Animated, { 
   FadeInDown
 } from 'react-native-reanimated';
-import Colors from '../../constants/Colors';
+import { Colors } from '../../constants/Colors';
+
 import AnimatedPressable from '../../components/AnimatedPressable';
 
 const { width } = Dimensions.get('window');
