@@ -163,7 +163,6 @@ export default function HomeScreen() {
           </AnimatedPressable>
         </Animated.View>
         
-        {/* Add extra padding at the bottom for the tab bar */}
         <View style={styles.bottomPadding} />
       </ScrollView>
     </SafeAreaView>
@@ -388,6 +387,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   bottomPadding: {
-    height: 80,
+    height: 20,
   }
 });

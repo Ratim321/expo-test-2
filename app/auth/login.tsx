@@ -8,8 +8,7 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
-  ActivityIndicator
+  ScrollView
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link, router } from 'expo-router';
@@ -19,7 +18,8 @@ import Colors from '../../constants/Colors';
 import Logo from '../../components/Logo';
 import { useToast } from '../../components/ToastProvider';
 import AnimatedPressable from '../../components/AnimatedPressable';
-import { useAuth } from '../../hooks/useAuth';
+
+const BASE_URL = 'https://ride.big-matrix.com';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -27,28 +27,47 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { showToast } = useToast();
-  const { login } = useAuth();
 
   const handleLogin = async () => {
-    // Validation
+    // Simple validation
     if (!email.trim() || !password.trim()) {
       showToast('Please enter both email and password', 'error');
       return;
     }
 
     setIsLoading(true);
-
     try {
-      const result = await login(email, password);
-      
-      if (result.success) {
+      const payload = {
+        email,
+        password,
+      };
+      console.log('Sending payload:', JSON.stringify(payload)); // Log payload
+
+      const response = await fetch(`${BASE_URL}/api/users/login/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const rawResponse = await response.text(); // Get raw response
+      console.log('Raw response:', rawResponse); // Log it
+
+      const data = JSON.parse(rawResponse);
+
+      if (response.ok) {
+        // Assuming the response includes tokens and user data based on CustomTokenObtainPairView
         showToast('Login successful!', 'success');
+        // Optionally store tokens in secure storage (e.g., AsyncStorage) here
         router.replace('/(tabs)');
       } else {
-        showToast(result.error, 'error');
+        const errorMessage = data.detail || data.error || 'Invalid credentials';
+        showToast(errorMessage, 'error');
       }
     } catch (error) {
-      showToast('An error occurred. Please try again.', 'error');
+      showToast('Network error. Please try again.', 'error');
+      console.error('Error:', error);
     } finally {
       setIsLoading(false);
     }
@@ -94,7 +113,6 @@ export default function LoginScreen() {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   placeholderTextColor={Colors.light.subtext}
-                  editable={!isLoading}
                 />
               </View>
             </View>
@@ -109,12 +127,10 @@ export default function LoginScreen() {
                   onChangeText={setPassword}
                   secureTextEntry={!showPassword}
                   placeholderTextColor={Colors.light.subtext}
-                  editable={!isLoading}
                 />
                 <TouchableOpacity 
                   style={styles.eyeIcon}
                   onPress={() => setShowPassword(!showPassword)}
-                  disabled={isLoading}
                 >
                   {showPassword ? (
                     <EyeOff size={20} color={Colors.light.subtext} />
@@ -125,10 +141,7 @@ export default function LoginScreen() {
               </View>
             </View>
 
-            <TouchableOpacity 
-              style={styles.forgotPasswordContainer}
-              disabled={isLoading}
-            >
+            <TouchableOpacity style={styles.forgotPasswordContainer}>
               <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
             </TouchableOpacity>
 
@@ -137,11 +150,9 @@ export default function LoginScreen() {
               onPress={handleLogin}
               disabled={isLoading}
             >
-              {isLoading ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.loginButtonText}>Sign In</Text>
-              )}
+              <Text style={styles.loginButtonText}>
+                {isLoading ? 'Signing in...' : 'Sign In'}
+              </Text>
             </AnimatedPressable>
           </Animated.View>
 
@@ -185,7 +196,7 @@ export default function LoginScreen() {
           >
             <Text style={styles.signupText}>Don't have an account? </Text>
             <Link href="/auth/signup" asChild>
-              <TouchableOpacity disabled={isLoading}>
+              <TouchableOpacity>
                 <Text style={styles.signupLink}>Sign Up</Text>
               </TouchableOpacity>
             </Link>
