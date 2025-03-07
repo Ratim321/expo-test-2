@@ -16,10 +16,10 @@
     "@lucide/lab": "^0.1.2",
     "@react-navigation/bottom-tabs": "^7.2.0",
     "@react-navigation/native": "^7.0.14",
-    "expo": "^52.0.33",
+    "axios": "^1.6.7",
+    "expo": "52.0.33",
     "expo-blur": "^14.0.3",
     "expo-constants": "^17.0.5",
-    "expo-device": "~7.0.2",
     "expo-font": "^13.0.3",
     "expo-haptics": "^14.0.1",
     "expo-linear-gradient": "^14.0.2",
@@ -27,6 +27,7 @@
     "expo-location": "~18.0.7",
     "expo-notifications": "~0.29.13",
     "expo-router": "4.0.17",
+    "expo-secure-store": "~12.8.1",
     "expo-splash-screen": "^0.29.21",
     "expo-status-bar": "^2.0.1",
     "expo-symbols": "^0.2.2",
@@ -47,7 +48,8 @@
     "react-native-toast-message": "^2.2.0",
     "react-native-url-polyfill": "^2.0.0",
     "react-native-web": "^0.19.13",
-    "react-native-webview": "13.12.5"
+    "react-native-webview": "13.12.5",
+    "expo-device": "~7.0.2"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

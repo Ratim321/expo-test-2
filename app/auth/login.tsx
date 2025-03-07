@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TextInput, 
+  TouchableOpacity, 
   Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link, router } from 'expo-router';
@@ -18,6 +19,7 @@ import Colors from '../../constants/Colors';
 import Logo from '../../components/Logo';
 import { useToast } from '../../components/ToastProvider';
 import AnimatedPressable from '../../components/AnimatedPressable';
+import { useAuth } from '../../hooks/useAuth';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -25,67 +27,65 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { showToast } = useToast();
+  const { login } = useAuth();
 
-  const handleLogin = () => {
-    // Simple validation
+  const handleLogin = async () => {
+    // Validation
+    if (!email.trim() || !password.trim()) {
+      showToast('Please enter both email and password', 'error');
+      return;
+    }
 
     setIsLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-
-      // Demo credentials for testing
-      if (email === '' && password === '') {
+    try {
+      const result = await login(email, password);
+      
+      if (result.success) {
         showToast('Login successful!', 'success');
         router.replace('/(tabs)');
       } else {
-        showToast(
-          'Invalid credentials. Try user@example.com / password',
-          'error'
-        );
+        showToast(result.error, 'error');
       }
-    }, 1500);
+    } catch (error) {
+      showToast('An error occurred. Please try again.', 'error');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
+      <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
-        <ScrollView
+        <ScrollView 
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          <Animated.View
+          <Animated.View 
             style={styles.logoContainer}
             entering={FadeInDown.delay(100).duration(500)}
           >
             <Logo size="large" />
           </Animated.View>
 
-          <Animated.View
+          <Animated.View 
             style={styles.headerContainer}
             entering={FadeInDown.delay(200).duration(500)}
           >
             <Text style={styles.headerTitle}>Welcome Back</Text>
-            <Text style={styles.headerSubtitle}>
-              Sign in to continue your journey
-            </Text>
+            <Text style={styles.headerSubtitle}>Sign in to continue your journey</Text>
           </Animated.View>
 
-          <Animated.View
+          <Animated.View 
             style={styles.formContainer}
             entering={FadeInDown.delay(300).duration(500)}
           >
             <View style={styles.inputGroup}>
               <View style={styles.inputContainer}>
-                <Mail
-                  size={20}
-                  color={Colors.light.primary}
-                  style={styles.inputIcon}
-                />
+                <Mail size={20} color={Colors.light.primary} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="Email"
@@ -94,17 +94,14 @@ export default function LoginScreen() {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   placeholderTextColor={Colors.light.subtext}
+                  editable={!isLoading}
                 />
               </View>
             </View>
 
             <View style={styles.inputGroup}>
               <View style={styles.inputContainer}>
-                <Lock
-                  size={20}
-                  color={Colors.light.primary}
-                  style={styles.inputIcon}
-                />
+                <Lock size={20} color={Colors.light.primary} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="Password"
@@ -112,10 +109,12 @@ export default function LoginScreen() {
                   onChangeText={setPassword}
                   secureTextEntry={!showPassword}
                   placeholderTextColor={Colors.light.subtext}
+                  editable={!isLoading}
                 />
-                <TouchableOpacity
+                <TouchableOpacity 
                   style={styles.eyeIcon}
                   onPress={() => setShowPassword(!showPassword)}
+                  disabled={isLoading}
                 >
                   {showPassword ? (
                     <EyeOff size={20} color={Colors.light.subtext} />
@@ -126,25 +125,27 @@ export default function LoginScreen() {
               </View>
             </View>
 
-            <TouchableOpacity style={styles.forgotPasswordContainer}>
+            <TouchableOpacity 
+              style={styles.forgotPasswordContainer}
+              disabled={isLoading}
+            >
               <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
             </TouchableOpacity>
 
-            <AnimatedPressable
-              style={[
-                styles.loginButton,
-                isLoading && styles.loginButtonDisabled,
-              ]}
+            <AnimatedPressable 
+              style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
               onPress={handleLogin}
               disabled={isLoading}
             >
-              <Text style={styles.loginButtonText}>
-                {isLoading ? 'Signing in...' : 'Sign In'}
-              </Text>
+              {isLoading ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.loginButtonText}>Sign In</Text>
+              )}
             </AnimatedPressable>
           </Animated.View>
 
-          <Animated.View
+          <Animated.View 
             style={styles.socialLoginContainer}
             entering={FadeInDown.delay(400).duration(500)}
           >
@@ -156,41 +157,35 @@ export default function LoginScreen() {
 
             <View style={styles.socialButtonsContainer}>
               <AnimatedPressable style={styles.socialButton}>
-                <Image
-                  source={{
-                    uri: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png',
-                  }}
-                  style={styles.socialIcon}
+                <Image 
+                  source={{ uri: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png' }} 
+                  style={styles.socialIcon} 
                 />
               </AnimatedPressable>
-
+              
               <AnimatedPressable style={styles.socialButton}>
-                <Image
-                  source={{
-                    uri: 'https://cdn-icons-png.flaticon.com/512/0/747.png',
-                  }}
-                  style={styles.socialIcon}
+                <Image 
+                  source={{ uri: 'https://cdn-icons-png.flaticon.com/512/0/747.png' }} 
+                  style={styles.socialIcon} 
                 />
               </AnimatedPressable>
-
+              
               <AnimatedPressable style={styles.socialButton}>
-                <Image
-                  source={{
-                    uri: 'https://cdn-icons-png.flaticon.com/512/5968/5968764.png',
-                  }}
-                  style={styles.socialIcon}
+                <Image 
+                  source={{ uri: 'https://cdn-icons-png.flaticon.com/512/5968/5968764.png' }} 
+                  style={styles.socialIcon} 
                 />
               </AnimatedPressable>
             </View>
           </Animated.View>
 
-          <Animated.View
+          <Animated.View 
             style={styles.signupContainer}
             entering={FadeInDown.delay(500).duration(500)}
           >
             <Text style={styles.signupText}>Don't have an account? </Text>
             <Link href="/auth/signup" asChild>
-              <TouchableOpacity>
+              <TouchableOpacity disabled={isLoading}>
                 <Text style={styles.signupLink}>Sign Up</Text>
               </TouchableOpacity>
             </Link>
