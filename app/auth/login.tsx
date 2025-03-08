@@ -18,6 +18,9 @@ import Colors from '../../constants/Colors';
 import Logo from '../../components/Logo';
 import { useToast } from '../../components/ToastProvider';
 import AnimatedPressable from '../../components/AnimatedPressable';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const BASE_URL = 'https://ride.big-matrix.com';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -26,27 +29,51 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const { showToast } = useToast();
 
-  const handleLogin = () => {
-    // Simple validation
+  const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
       showToast('Please enter both email and password', 'error');
       return;
     }
 
     setIsLoading(true);
+    try {
+      const payload = {
+        email,
+        password,
+      };
+      console.log('Sending payload:', JSON.stringify(payload));
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      
-      // Demo credentials for testing
-      if (email === 'user@example.com' && password === 'password') {
+      const response = await fetch(`${BASE_URL}/api/users/login/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const rawResponse = await response.text();
+      console.log('Raw response:', rawResponse);
+
+      const data = JSON.parse(rawResponse);
+
+      if (response.ok) {
+        // Store the tokens
+        await AsyncStorage.setItem('access_token', data.access);
+        await AsyncStorage.setItem('refresh_token', data.refresh);
+        await AsyncStorage.setItem('user_data', JSON.stringify(data.user));
+        
         showToast('Login successful!', 'success');
         router.replace('/(tabs)');
       } else {
-        showToast('Invalid credentials. Try user@example.com / password', 'error');
+        const errorMessage = data.detail || data.error || 'Invalid credentials';
+        showToast(errorMessage, 'error');
       }
-    }, 1500);
+    } catch (error) {
+      showToast('Network error. Please try again.', 'error');
+      console.error('Error:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

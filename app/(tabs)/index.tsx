@@ -1,10 +1,3 @@
-
-
-
-
-
-
-
 import React, { useState } from 'react';
 import { 
   View, 
@@ -18,7 +11,7 @@ import {
   Dimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, Plus, MapPin, Flag, Clock, ChevronRight, Bell, Chrome as HomeIcon, Car, TriangleAlert as AlertTriangle, Clock as ClockIcon, User } from 'lucide-react-native';
+import { Search, Plus, MapPin, Flag, Clock, ChevronRight, Bell } from 'lucide-react-native';
 import { Link } from 'expo-router';
 import Animated, { 
   FadeInDown
@@ -170,37 +163,8 @@ export default function HomeScreen() {
           </AnimatedPressable>
         </Animated.View>
         
-        {/* Add extra padding at the bottom for the tab bar */}
         <View style={styles.bottomPadding} />
       </ScrollView>
-      
-      {/* Bottom Tab Bar */}
-      <View style={styles.customTabBar}>
-        <TouchableOpacity style={styles.tabItem}>
-          <HomeIcon size={24} color={Colors.light.primary} />
-          <Text style={[styles.tabLabel, styles.activeTabLabel]}>Home</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.tabItem}>
-          <Car size={24} color={Colors.light.subtext} />
-          <Text style={styles.tabLabel}>Rides</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.tabItem}>
-          <AlertTriangle size={24} color={Colors.light.subtext} />
-          <Text style={styles.tabLabel}>SOS</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.tabItem}>
-          <ClockIcon size={24} color={Colors.light.subtext} />
-          <Text style={styles.tabLabel}>History</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.tabItem}>
-          <User size={24} color={Colors.light.subtext} />
-          <Text style={styles.tabLabel}>Profile</Text>
-        </TouchableOpacity>
-      </View>
     </SafeAreaView>
   );
 }
@@ -423,35 +387,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   bottomPadding: {
-    height: 80,
-  },
-  customTabBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    backgroundColor: Colors.light.card,
-    borderTopWidth: 1,
-    borderTopColor: Colors.light.border,
-    paddingVertical: 8,
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 60,
-  },
-  tabItem: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-  },
-  tabLabel: {
-    fontSize: 12,
-    color: Colors.light.subtext,
-    marginTop: 4,
-    fontFamily: 'Inter-Regular',
-  },
-  activeTabLabel: {
-    color: Colors.light.primary,
-    fontFamily: 'Inter-Medium',
+    height: 20,
   }
 });

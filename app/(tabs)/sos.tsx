@@ -1,115 +1,62 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  ScrollView, 
-  Image, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Image,
   Linking,
   Platform,
-  Alert
+  Modal,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TriangleAlert as AlertTriangle, Phone, Users, MapPin, Shield, Ambulance, Flame } from 'lucide-react-native';
 import * as Location from 'expo-location';
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
-  withRepeat, 
-  withTiming, 
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
   withSequence,
   Easing,
-  FadeInDown
+  FadeInDown,
 } from 'react-native-reanimated';
 import Colors from '../../constants/Colors';
 import { useToast } from '../../components/ToastProvider';
 import AnimatedPressable from '../../components/AnimatedPressable';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const BASE_URL = 'https://ride.big-matrix.com';
 
 export default function SOSScreen() {
-  const [location, setLocation] = useState<Location.LocationObject | null>(null);
+  const [location, setLocation] = useState(null);
   const [isEmergencyActive, setIsEmergencyActive] = useState(false);
   const [countdown, setCountdown] = useState(5);
   const [nearbyHelpers, setNearbyHelpers] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [selectedUsers, setSelectedUsers] = useState([]);
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [alertMode, setAlertMode] = useState('specific'); // 'specific', 'radius', or 'community'
   const { showToast } = useToast();
-  
-  // Animation values
+
   const scale = useSharedValue(1);
   const borderWidth = useSharedValue(2);
   const rotation = useSharedValue(0);
-  
-  // Emergency contacts
+
   const emergencyContacts = [
-    {
-      id: '1',
-      name: 'Police',
-      number: '911',
-      icon: <Shield size={24} color="#FFFFFF" />,
-      backgroundColor: '#3B82F6',
-    },
-    {
-      id: '2',
-      name: 'Ambulance',
-      number: '112',
-      icon: <Ambulance size={24} color="#FFFFFF" />,
-      backgroundColor: '#EF4444',
-    },
-    {
-      id: '3',
-      name: 'Fire Department',
-      number: '101',
-      icon: <Flame size={24} color="#FFFFFF" />,
-      backgroundColor: '#F59E0B',
-    },
+    { id: '1', name: 'Police', number: '911', icon: <Shield size={24} color="#FFFFFF" />, backgroundColor: '#3B82F6' },
+    { id: '2', name: 'Ambulance', number: '112', icon: <Ambulance size={24} color="#FFFFFF" />, backgroundColor: '#EF4444' },
+    { id: '3', name: 'Fire Department', number: '101', icon: <Flame size={24} color="#FFFFFF" />, backgroundColor: '#F59E0B' },
   ];
-  
-  // Family contacts (would come from user's saved contacts in a real app)
+
   const familyContacts = [
-    {
-      id: '1',
-      name: 'Mom',
-      number: '+1234567890',
-      image: 'https://images.unsplash.com/photo-1581403341630-a6e0b9d2d257?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80',
-    },
-    {
-      id: '2',
-      name: 'Dad',
-      number: '+1987654321',
-      image: 'https://images.unsplash.com/photo-1582750433449-648ed127bb54?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80',
-    },
-    {
-      id: '3',
-      name: 'Sister',
-      number: '+1122334455',
-      image: 'https://images.unsplash.com/photo-1535008652995-e95986556e32?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80',
-    },
+    { id: '1', name: 'Mom', number: '+1234567890', image: 'https://images.unsplash.com/photo-1581403341630-a6e0b9d2d257?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80' },
+    { id: '2', name: 'Dad', number: '+1987654321', image: 'https://images.unsplash.com/photo-1582750433449-648ed127bb54?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80' },
+    { id: '3', name: 'Sister', number: '+1122334455', image: 'https://images.unsplash.com/photo-1535008652995-e95986556e32?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80' },
   ];
-  
-  // Simulated nearby helpers (in a real app, this would be fetched from a backend)
-  const mockNearbyHelpers = [
-    {
-      id: '1',
-      name: 'John Doe',
-      distance: '0.5 km',
-      rating: 4.8,
-      image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80',
-    },
-    {
-      id: '2',
-      name: 'Sarah Johnson',
-      distance: '1.2 km',
-      rating: 4.9,
-      image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80',
-    },
-    {
-      id: '3',
-      name: 'Michael Brown',
-      distance: '1.8 km',
-      rating: 4.7,
-      image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80',
-    },
-  ];
-  
+
   useEffect(() => {
     (async () => {
       if (Platform.OS !== 'web') {
@@ -118,13 +65,11 @@ export default function SOSScreen() {
           showToast('Location permission is required for SOS features', 'error');
           return;
         }
-
-        const location = await Location.getCurrentPositionAsync({});
-        setLocation(location);
+        const loc = await Location.getCurrentPositionAsync({});
+        setLocation(loc);
       }
     })();
-    
-    // Start subtle animations for the SOS button
+
     scale.value = withRepeat(
       withSequence(
         withTiming(1.05, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
@@ -133,7 +78,7 @@ export default function SOSScreen() {
       -1,
       true
     );
-    
+
     borderWidth.value = withRepeat(
       withSequence(
         withTiming(6, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
@@ -142,114 +87,215 @@ export default function SOSScreen() {
       -1,
       true
     );
+
+    fetchUsers();
+    fetchActiveSOSAlerts();
   }, []);
-  
+
   useEffect(() => {
-    // Countdown logic for emergency activation
-    let interval: NodeJS.Timeout;
-    
+    let interval;
     if (isEmergencyActive && countdown > 0) {
-      interval = setInterval(() => {
-        setCountdown(prev => prev - 1);
-      }, 1000);
+      interval = setInterval(() => setCountdown(prev => prev - 1), 1000);
     } else if (countdown === 0) {
-      // Trigger emergency alert
       triggerEmergencyAlert();
     }
-    
     return () => {
       if (interval) clearInterval(interval);
     };
   }, [isEmergencyActive, countdown]);
-  
-  const triggerEmergencyAlert = () => {
-    // In a real app, this would send alerts to emergency contacts and nearby users
-    
-    // Simulate finding nearby helpers
-    setNearbyHelpers(mockNearbyHelpers);
-    
-    // Show success toast
-    showToast('Emergency alert sent to your contacts and nearby users', 'success');
-    
-    // Reset the emergency state but keep the helpers visible
-    setIsEmergencyActive(false);
-    setCountdown(5);
-    
-    // Start rotation animation for the alert icon
-    rotation.value = withRepeat(
-      withTiming(360, { duration: 2000, easing: Easing.linear }),
-      -1,
-      false
-    );
+
+  const fetchUsers = async () => {
+    try {
+      const token = await AsyncStorage.getItem('access_token');
+      if (!token) {
+        showToast('Please log in to fetch users', 'error');
+        return;
+      }
+
+      const response = await fetch(`${BASE_URL}/api/sos/users/`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      console.log("TEST", response);
+
+      const data = await response.json();
+      if (response.ok) {
+        setUsers(data);
+      } else {
+        showToast('Failed to fetch users', 'error');
+      }
+    } catch (error) {
+      showToast('Network error fetching users', 'error');
+      console.error('Error:', error);
+    }
   };
-  
+
+  const fetchActiveSOSAlerts = async () => {
+    try {
+      const token = await AsyncStorage.getItem('access_token');
+      if (!token) return;
+
+      const response = await fetch(`${BASE_URL}/api/sos/active/`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      console.log("active", response);
+      const data = await response.json();
+      if (response.ok) {
+        const helpers = data.map(alert => ({
+          id: alert.id.toString(),
+          name: `${alert.user.first_name} ${alert.user.last_name}`,
+          distance: 'Unknown',
+          rating: 4.5,
+          image: alert.user.profile_photo || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80',
+        }));
+        setNearbyHelpers(helpers);
+      }
+    } catch (error) {
+      console.error('Error fetching SOS alerts:', error);
+    }
+  };
+
+  const triggerEmergencyAlert = async () => {
+    if (!location) {
+      showToast('Location unavailable. Cannot send SOS.', 'error');
+      return;
+    }
+
+    try {
+      const token = await AsyncStorage.getItem('access_token');
+      if (!token) {
+        showToast('Please log in to send SOS', 'error');
+        return;
+      }
+
+      const payload = {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      };
+      if (alertMode === 'specific' && selectedUsers.length > 0) {
+        payload.notified_users = selectedUsers;
+      } else if (alertMode === 'community') {
+        payload.is_community_alert = true;
+      } // 'radius' mode uses default backend behavior (no extra field)
+
+      console.log('Sending SOS payload:', JSON.stringify(payload));
+
+      const response = await fetch(`${BASE_URL}/api/sos/create/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      console.log("create", response);
+      const data = await response.json();
+      console.log('SOS create response:', data);
+
+      if (response.ok) {
+        showToast(data.notification_status || 'Emergency alert sent successfully', 'success');
+        fetchActiveSOSAlerts();
+      } else {
+        showToast(data.error || 'Failed to send SOS', 'error');
+      }
+    } catch (error) {
+      showToast('Network error sending SOS', 'error');
+      console.error('Error:', error);
+    } finally {
+      setIsEmergencyActive(false);
+      setCountdown(5);
+      setSelectedUsers([]);
+      setAlertMode('specific'); // Reset to default
+      rotation.value = withRepeat(
+        withTiming(360, { duration: 2000, easing: Easing.linear }),
+        -1,
+        false
+      );
+    }
+  };
+
   const handleSOSPress = () => {
     if (!isEmergencyActive) {
-      setIsEmergencyActive(true);
-      showToast(`SOS will be triggered in ${countdown} seconds. Tap again to cancel.`, 'info');
+      setShowUserModal(true);
     } else {
-      // Cancel the emergency
       setIsEmergencyActive(false);
       setCountdown(5);
       showToast('Emergency alert cancelled', 'info');
     }
   };
-  
-  const callEmergencyNumber = (number: string) => {
+
+  const toggleUserSelection = (userId) => {
+    setSelectedUsers(prev =>
+      prev.includes(userId)
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
+  };
+
+  const confirmSOS = () => {
+    if (alertMode === 'specific' && selectedUsers.length === 0) {
+      showToast('Please select at least one user', 'error');
+      return;
+    }
+    setShowUserModal(false);
+    setIsEmergencyActive(true);
+    showToast(`SOS will be triggered in ${countdown} seconds. Tap again to cancel.`, 'info');
+  };
+
+  const callEmergencyNumber = (number) => {
     if (Platform.OS === 'web') {
       showToast('Calling is not available on web', 'error');
       return;
     }
-    
     Linking.openURL(`tel:${number}`);
   };
-  
-  const sendSMS = (number: string) => {
+
+  const sendSMS = (number) => {
     if (Platform.OS === 'web') {
       showToast('SMS is not available on web', 'error');
       return;
     }
-    
-    const message = `EMERGENCY: I need help! My location is: ${location ? 
-      `https://maps.google.com/?q=${location.coords.latitude},${location.coords.longitude}` : 
+    const message = `EMERGENCY: I need help! My location is: ${location ?
+      `https://maps.google.com/?q=${location.coords.latitude},${location.coords.longitude}` :
       'Location not available'}`;
-    
     Linking.openURL(`sms:${number}?body=${encodeURIComponent(message)}`);
   };
-  
-  // Animated styles
-  const sosButtonAnimatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ scale: scale.value }],
-      borderWidth: borderWidth.value,
-    };
-  });
-  
-  const alertIconAnimatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ rotate: `${rotation.value}deg` }],
-    };
-  });
-  
+
+  const sosButtonAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    borderWidth: borderWidth.value,
+  }));
+
+  const alertIconAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotation.value}deg` }],
+  }));
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Emergency SOS</Text>
       </View>
-      
+
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.sosButtonContainer}>
-          <Animated.View 
+          <Animated.View
             style={[
               styles.sosButtonOuter,
               sosButtonAnimatedStyle,
-              isEmergencyActive && styles.sosButtonOuterActive
+              isEmergencyActive && styles.sosButtonOuterActive,
             ]}
           >
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[
                 styles.sosButton,
-                isEmergencyActive && styles.sosButtonActive
+                isEmergencyActive && styles.sosButtonActive,
               ]}
               onPress={handleSOSPress}
               activeOpacity={0.8}
@@ -264,16 +310,16 @@ export default function SOSScreen() {
               )}
             </TouchableOpacity>
           </Animated.View>
-          
+
           <Text style={styles.sosInstructions}>
-            {isEmergencyActive 
-              ? 'Tap again to cancel' 
-              : 'Tap the button in case of emergency'}
+            {isEmergencyActive
+              ? 'Tap again to cancel'
+              : 'Tap to select SOS options'}
           </Text>
         </View>
-        
+
         {nearbyHelpers.length > 0 && (
-          <Animated.View 
+          <Animated.View
             style={styles.nearbyHelpersSection}
             entering={FadeInDown.delay(300).duration(500)}
           >
@@ -283,13 +329,13 @@ export default function SOSScreen() {
               </Animated.View>
               <Text style={styles.sectionTitle}>Nearby Help</Text>
             </View>
-            
+
             <Text style={styles.helperSubtitle}>
-              These people are within 2km and have been notified
+              These people have been notified of an SOS
             </Text>
-            
+
             {nearbyHelpers.map((helper, index) => (
-              <Animated.View 
+              <Animated.View
                 key={helper.id}
                 entering={FadeInDown.delay(400 + index * 100).duration(400)}
               >
@@ -303,7 +349,7 @@ export default function SOSScreen() {
                       <Text style={styles.helperRating}>★ {helper.rating}</Text>
                     </View>
                   </View>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.callButton}
                     onPress={() => callEmergencyNumber('+1234567890')}
                   >
@@ -314,16 +360,15 @@ export default function SOSScreen() {
             ))}
           </Animated.View>
         )}
-        
+
         <View style={styles.emergencyContactsSection}>
           <View style={styles.sectionHeader}>
             <Phone size={20} color={Colors.light.primary} />
             <Text style={styles.sectionTitle}>Emergency Services</Text>
           </View>
-          
           <View style={styles.emergencyContactsGrid}>
             {emergencyContacts.map((contact) => (
-              <TouchableOpacity 
+              <TouchableOpacity
                 key={contact.id}
                 style={[styles.emergencyContactCard, { backgroundColor: contact.backgroundColor }]}
                 onPress={() => callEmergencyNumber(contact.number)}
@@ -337,13 +382,12 @@ export default function SOSScreen() {
             ))}
           </View>
         </View>
-        
+
         <View style={styles.familyContactsSection}>
           <View style={styles.sectionHeader}>
             <Users size={20} color={Colors.light.primary} />
             <Text style={styles.sectionTitle}>Family Contacts</Text>
           </View>
-          
           {familyContacts.map((contact) => (
             <AnimatedPressable key={contact.id} style={styles.familyContactCard}>
               <Image source={{ uri: contact.image }} style={styles.familyContactImage} />
@@ -352,13 +396,13 @@ export default function SOSScreen() {
                 <Text style={styles.familyContactNumber}>{contact.number}</Text>
               </View>
               <View style={styles.familyContactActions}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.familyContactButton, styles.callFamilyButton]}
                   onPress={() => callEmergencyNumber(contact.number)}
                 >
                   <Phone size={16} color="#FFFFFF" />
                 </TouchableOpacity>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.familyContactButton, styles.smsFamilyButton]}
                   onPress={() => sendSMS(contact.number)}
                 >
@@ -367,32 +411,28 @@ export default function SOSScreen() {
               </View>
             </AnimatedPressable>
           ))}
-          
           <TouchableOpacity style={styles.addContactButton}>
             <Text style={styles.addContactButtonText}>+ Add Emergency Contact</Text>
           </TouchableOpacity>
         </View>
-        
+
         <View style={styles.safetyTipsSection}>
           <View style={styles.sectionHeader}>
             <Shield size={20} color={Colors.light.primary} />
             <Text style={styles.sectionTitle}>Safety Tips</Text>
           </View>
-          
           <View style={styles.safetyTipCard}>
             <Text style={styles.safetyTipTitle}>Stay Calm</Text>
             <Text style={styles.safetyTipText}>
               Take deep breaths and try to remain calm during an emergency situation.
             </Text>
           </View>
-          
           <View style={styles.safetyTipCard}>
             <Text style={styles.safetyTipTitle}>Share Your Location</Text>
             <Text style={styles.safetyTipText}>
               Always share your live location with trusted contacts when traveling.
             </Text>
           </View>
-          
           <View style={styles.safetyTipCard}>
             <Text style={styles.safetyTipTitle}>Use Well-Lit Routes</Text>
             <Text style={styles.safetyTipText}>
@@ -401,6 +441,86 @@ export default function SOSScreen() {
           </View>
         </View>
       </ScrollView>
+
+      <Modal
+        visible={showUserModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowUserModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>SOS Options</Text>
+            <TouchableOpacity
+              style={[
+                styles.optionButton,
+                alertMode === 'radius' && styles.optionButtonSelected,
+              ]}
+              onPress={() => {
+                setAlertMode('radius');
+                setSelectedUsers([]);
+              }}
+            >
+              <Text style={styles.optionText}>Notify Nearby Users (5km)</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.optionButton,
+                alertMode === 'community' && styles.optionButtonSelected,
+              ]}
+              onPress={() => {
+                setAlertMode('community');
+                setSelectedUsers([]);
+              }}
+            >
+              <Text style={styles.optionText}>Notify Community</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.optionButton,
+                alertMode === 'specific' && styles.optionButtonSelected,
+              ]}
+              onPress={() => setAlertMode('specific')}
+            >
+              <Text style={styles.optionText}>Select Specific Users</Text>
+            </TouchableOpacity>
+
+            {alertMode === 'specific' && (
+              <FlatList
+                data={users}
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={[
+                      styles.userItem,
+                      selectedUsers.includes(item.id) && styles.userItemSelected,
+                    ]}
+                    onPress={() => toggleUserSelection(item.id)}
+                  >
+                    <Text style={styles.userName}>
+                      {item.first_name} {item.last_name}
+                    </Text>
+                    <Text style={styles.userEmail}>{item.email}</Text>
+                  </TouchableOpacity>
+                )}
+                style={styles.userList}
+              />
+            )}
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setShowUserModal(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.confirmButton} onPress={confirmSOS}>
+                <Text style={styles.confirmButtonText}>Confirm</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -690,5 +810,88 @@ const styles = StyleSheet.create({
     color: Colors.light.subtext,
     lineHeight: 20,
     fontFamily: 'Inter-Regular',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: Colors.light.background,
+    borderRadius: 12,
+    padding: 20,
+    width: '90%',
+    maxHeight: '80%',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: Colors.light.text,
+    marginBottom: 15,
+    fontFamily: 'Inter-SemiBold',
+  },
+  optionButton: {
+    padding: 15,
+    borderRadius: 8,
+    backgroundColor: Colors.light.card,
+    marginBottom: 10,
+  },
+  optionButtonSelected: {
+    backgroundColor: Colors.light.primary + '20',
+  },
+  optionText: {
+    fontSize: 16,
+    color: Colors.light.text,
+    fontFamily: 'Inter-Medium',
+  },
+  userList: {
+    maxHeight: '60%',
+  },
+  userItem: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.border,
+  },
+  userItemSelected: {
+    backgroundColor: Colors.light.primary + '20',
+  },
+  userName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: Colors.light.text,
+    fontFamily: 'Inter-Medium',
+  },
+  userEmail: {
+    fontSize: 14,
+    color: Colors.light.subtext,
+    fontFamily: 'Inter-Regular',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+  },
+  cancelButton: {
+    backgroundColor: Colors.light.border,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  cancelButtonText: {
+    color: Colors.light.text,
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+  },
+  confirmButton: {
+    backgroundColor: Colors.light.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  confirmButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
   },
 });

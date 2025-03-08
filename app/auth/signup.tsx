@@ -7,48 +7,134 @@ import {
   TouchableOpacity, 
   KeyboardAvoidingView,
   Platform,
-  ScrollView
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link, router } from 'expo-router';
-import { Mail, Lock, Eye, EyeOff, User, ChevronLeft, Phone } from 'lucide-react-native';
+import { Mail, Lock, Eye, EyeOff, User, ChevronLeft, Phone, CircleUser as UserCircle2 } from 'lucide-react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import Colors from '../../constants/Colors';
 import Logo from '../../components/Logo';
 import { useToast } from '../../components/ToastProvider';
 import AnimatedPressable from '../../components/AnimatedPressable';
 
+const BASE_URL = 'https://ride.big-matrix.com';
+
 export default function SignupScreen() {
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [studentId, setStudentId] = useState('');
+  const [gender, setGender] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otp, setOtp] = useState('');
   const { showToast } = useToast();
 
-  const handleSignup = () => {
-    // Simple validation
-    if (!name.trim() || !email.trim() || !phone.trim() || !password.trim() || !confirmPassword.trim()) {
+  const validateForm = () => {
+    if (!firstName || !lastName || !email || !phone || !studentId || !gender || !password || !confirmPassword) {
       showToast('Please fill in all fields', 'error');
-      return;
+      return false;
+    }
+
+    if (!email.endsWith('@northsouth.edu')) {
+      showToast('Please use your NSU email (@northsouth.edu)', 'error');
+      return false;
     }
 
     if (password !== confirmPassword) {
       showToast('Passwords do not match', 'error');
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSignup = async () => {
+    if (!validateForm()) return;
+
+    setIsLoading(true);
+    try {
+      const payload = {
+        email,
+        first_name: firstName,
+        last_name: lastName,
+        gender,
+        student_id: studentId,
+        phone_number: phone,
+        password,
+      };
+      console.log('Sending payload:', JSON.stringify(payload)); // Log payload
+
+      const response = await fetch(`${BASE_URL}/api/users/register/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const rawResponse = await response.text(); // Get raw response
+      console.log('Raw response:', rawResponse); // Log it
+
+      const data = JSON.parse(rawResponse); // Parse after logging
+
+      if (response.ok) {
+        showToast('OTP sent to your email!', 'success');
+        setOtpSent(true);
+      } else {
+        const errorMessage = data.error || Object.values(data)[0]?.[0] || 'Registration failed';
+        showToast(errorMessage, 'error');
+      }
+    } catch (error) {
+      showToast('Network error. Please try again.', 'error');
+      console.error('Error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const verifyOtp = async () => {
+    if (!otp) {
+      showToast('Please enter OTP', 'error');
       return;
     }
 
     setIsLoading(true);
+    try {
+      const response = await fetch(`${BASE_URL}/api/verify-otp/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          otp_code: otp, // Matches backend expectation
+        }),
+      });
 
-    // Simulate API call
-    setTimeout(() => {
+      const rawResponse = await response.text(); // Get raw response
+      console.log('Verify OTP response:', rawResponse); // Log it
+
+      const data = JSON.parse(rawResponse);
+
+      if (response.ok) {
+        showToast('Registration successful!', 'success');
+        router.replace('/auth/login');
+      } else {
+        showToast(data.error || 'OTP verification failed', 'error');
+      }
+    } catch (error) {
+      showToast('Network error. Please try again.', 'error');
+      console.error('Error:', error);
+    } finally {
       setIsLoading(false);
-      showToast('Account created successfully!', 'success');
-      router.replace('/auth/onboarding');
-    }, 1500);
+    }
   };
 
   return (
@@ -82,121 +168,214 @@ export default function SignupScreen() {
             entering={FadeInDown.delay(200).duration(500)}
           >
             <Text style={styles.headerTitle}>Create Account</Text>
-            <Text style={styles.headerSubtitle}>Join our community of riders and drivers</Text>
+            <Text style={styles.headerSubtitle}>Join our NSU ride-sharing community</Text>
           </Animated.View>
 
-          <Animated.View 
-            style={styles.formContainer}
-            entering={FadeInDown.delay(300).duration(500)}
-          >
-            <View style={styles.inputGroup}>
-              <View style={styles.inputContainer}>
-                <User size={20} color={Colors.light.primary} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Full Name"
-                  value={name}
-                  onChangeText={setName}
-                  placeholderTextColor={Colors.light.subtext}
-                />
-              </View>
-            </View>
-
-            <View style={styles.inputGroup}>
-              <View style={styles.inputContainer}>
-                <Mail size={20} color={Colors.light.primary} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Email"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  placeholderTextColor={Colors.light.subtext}
-                />
-              </View>
-            </View>
-
-            <View style={styles.inputGroup}>
-              <View style={styles.inputContainer}>
-                <Phone size={20} color={Colors.light.primary} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Phone Number"
-                  value={phone}
-                  onChangeText={setPhone}
-                  keyboardType="phone-pad"
-                  placeholderTextColor={Colors.light.subtext}
-                />
-              </View>
-            </View>
-
-            <View style={styles.inputGroup}>
-              <View style={styles.inputContainer}>
-                <Lock size={20} color={Colors.light.primary} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Password"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  placeholderTextColor={Colors.light.subtext}
-                />
-                <TouchableOpacity 
-                  style={styles.eyeIcon}
-                  onPress={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                    <EyeOff size={20} color={Colors.light.subtext} />
-                  ) : (
-                    <Eye size={20} color={Colors.light.subtext} />
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <View style={styles.inputGroup}>
-              <View style={styles.inputContainer}>
-                <Lock size={20} color={Colors.light.primary} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Confirm Password"
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  secureTextEntry={!showConfirmPassword}
-                  placeholderTextColor={Colors.light.subtext}
-                />
-                <TouchableOpacity 
-                  style={styles.eyeIcon}
-                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                >
-                  {showConfirmPassword ? (
-                    <EyeOff size={20} color={Colors.light.subtext} />
-                  ) : (
-                    <Eye size={20} color={Colors.light.subtext} />
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <View style={styles.termsContainer}>
-              <Text style={styles.termsText}>
-                By signing up, you agree to our{' '}
-                <Text style={styles.termsLink}>Terms of Service</Text> and{' '}
-                <Text style={styles.termsLink}>Privacy Policy</Text>
-              </Text>
-            </View>
-
-            <AnimatedPressable 
-              style={[styles.signupButton, isLoading && styles.signupButtonDisabled]}
-              onPress={handleSignup}
-              disabled={isLoading}
+          {!otpSent ? (
+            <Animated.View 
+              style={styles.formContainer}
+              entering={FadeInDown.delay(300).duration(500)}
             >
-              <Text style={styles.signupButtonText}>
-                {isLoading ? 'Creating Account...' : 'Create Account'}
+              <View style={styles.inputGroup}>
+                <View style={styles.inputContainer}>
+                  <User size={20} color={Colors.light.primary} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="First Name"
+                    value={firstName}
+                    onChangeText={setFirstName}
+                    placeholderTextColor={Colors.light.subtext}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <View style={styles.inputContainer}>
+                  <User size={20} color={Colors.light.primary} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Last Name"
+                    value={lastName}
+                    onChangeText={setLastName}
+                    placeholderTextColor={Colors.light.subtext}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <View style={styles.inputContainer}>
+                  <Mail size={20} color={Colors.light.primary} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="NSU Email"
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    placeholderTextColor={Colors.light.subtext}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <View style={styles.inputContainer}>
+                  <UserCircle2 size={20} color={Colors.light.primary} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Student ID"
+                    value={studentId}
+                    onChangeText={setStudentId}
+                    placeholderTextColor={Colors.light.subtext}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <View style={styles.inputContainer}>
+                  <Phone size={20} color={Colors.light.primary} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Phone Number"
+                    value={phone}
+                    onChangeText={setPhone}
+                    keyboardType="phone-pad"
+                    placeholderTextColor={Colors.light.subtext}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Gender</Text>
+                <View style={styles.genderContainer}>
+                  <TouchableOpacity 
+                    style={[styles.genderButton, gender === 'Male' && styles.genderButtonActive]}
+                    onPress={() => setGender('Male')}
+                  >
+                    <Text style={[styles.genderButtonText, gender === 'Male' && styles.genderButtonTextActive]}>
+                      Male
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.genderButton, gender === 'Female' && styles.genderButtonActive]}
+                    onPress={() => setGender('Female')}
+                  >
+                    <Text style={[styles.genderButtonText, gender === 'Female' && styles.genderButtonTextActive]}>
+                      Female
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.genderButton, gender === 'Other' && styles.genderButtonActive]}
+                    onPress={() => setGender('Other')}
+                  >
+                    <Text style={[styles.genderButtonText, gender === 'Other' && styles.genderButtonTextActive]}>
+                      Other
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <View style={styles.inputContainer}>
+                  <Lock size={20} color={Colors.light.primary} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Password"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    placeholderTextColor={Colors.light.subtext}
+                  />
+                  <TouchableOpacity 
+                    style={styles.eyeIcon}
+                    onPress={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff size={20} color={Colors.light.subtext} />
+                    ) : (
+                      <Eye size={20} color={Colors.light.subtext} />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <View style={styles.inputContainer}>
+                  <Lock size={20} color={Colors.light.primary} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Confirm Password"
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    secureTextEntry={!showConfirmPassword}
+                    placeholderTextColor={Colors.light.subtext}
+                  />
+                  <TouchableOpacity 
+                    style={styles.eyeIcon}
+                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff size={20} color={Colors.light.subtext} />
+                    ) : (
+                      <Eye size={20} color={Colors.light.subtext} />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={styles.termsContainer}>
+                <Text style={styles.termsText}>
+                  By signing up, you agree to our{' '}
+                  <Text style={styles.termsLink}>Terms of Service</Text> and{' '}
+                  <Text style={styles.termsLink}>Privacy Policy</Text>
+                </Text>
+              </View>
+
+              <AnimatedPressable 
+                style={[styles.signupButton, isLoading && styles.signupButtonDisabled]}
+                onPress={handleSignup}
+                disabled={isLoading}
+              >
+                <Text style={styles.signupButtonText}>
+                  {isLoading ? 'Creating Account...' : 'Create Account'}
+                </Text>
+              </AnimatedPressable>
+            </Animated.View>
+          ) : (
+            <Animated.View 
+              style={styles.formContainer}
+              entering={FadeInDown.delay(300).duration(500)}
+            >
+              <Text style={styles.otpTitle}>Enter OTP</Text>
+              <Text style={styles.otpSubtitle}>
+                Please enter the 6-digit code sent to your email
               </Text>
-            </AnimatedPressable>
-          </Animated.View>
+
+              <View style={styles.inputGroup}>
+                <View style={styles.inputContainer}>
+                  <Lock size={20} color={Colors.light.primary} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter OTP"
+                    value={otp}
+                    onChangeText={setOtp}
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    placeholderTextColor={Colors.light.subtext}
+                  />
+                </View>
+              </View>
+
+              <AnimatedPressable 
+                style={[styles.signupButton, isLoading && styles.signupButtonDisabled]}
+                onPress={verifyOtp}
+                disabled={isLoading}
+              >
+                <Text style={styles.signupButtonText}>
+                  {isLoading ? 'Verifying...' : 'Verify OTP'}
+                </Text>
+              </AnimatedPressable>
+            </Animated.View>
+          )}
 
           <Animated.View 
             style={styles.loginContainer}
@@ -261,6 +440,12 @@ const styles = StyleSheet.create({
   inputGroup: {
     marginBottom: 16,
   },
+  label: {
+    fontSize: 16,
+    color: Colors.light.text,
+    marginBottom: 8,
+    fontFamily: 'Inter-Medium',
+  },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -282,6 +467,32 @@ const styles = StyleSheet.create({
   },
   eyeIcon: {
     padding: 8,
+  },
+  genderContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  genderButton: {
+    flex: 1,
+    paddingVertical: 12,
+    backgroundColor: Colors.light.card,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    marginHorizontal: 4,
+    alignItems: 'center',
+  },
+  genderButtonActive: {
+    backgroundColor: Colors.light.primary,
+    borderColor: Colors.light.primary,
+  },
+  genderButtonText: {
+    fontSize: 16,
+    color: Colors.light.text,
+    fontFamily: 'Inter-Medium',
+  },
+  genderButtonTextActive: {
+    color: Colors.light.card,
   },
   termsContainer: {
     marginBottom: 20,
@@ -328,5 +539,20 @@ const styles = StyleSheet.create({
     color: Colors.light.primary,
     fontWeight: '600',
     fontFamily: 'Inter-SemiBold',
+  },
+  otpTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: Colors.light.text,
+    marginBottom: 8,
+    fontFamily: 'Inter-Bold',
+    textAlign: 'center',
+  },
+  otpSubtitle: {
+    fontSize: 16,
+    color: Colors.light.subtext,
+    fontFamily: 'Inter-Regular',
+    textAlign: 'center',
+    marginBottom: 24,
   },
 });
