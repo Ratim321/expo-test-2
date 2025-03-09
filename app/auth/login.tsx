@@ -23,8 +23,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const BASE_URL = 'https://ride.big-matrix.com';
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+const [email, setEmail] = useState('kazi.sanjid@northsouth.edu');
+  const [password, setPassword] = useState('test123');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { showToast } = useToast();

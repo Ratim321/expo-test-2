@@ -10,9 +10,22 @@ import {
   Platform,
   Modal,
   FlatList,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { TriangleAlert as AlertTriangle, Phone, Users, MapPin, Shield, Ambulance, Flame } from 'lucide-react-native';
+import { 
+  TriangleAlert as AlertTriangle, 
+  Phone, 
+  Users, 
+  MapPin, 
+  Shield, 
+  Ambulance, 
+  Flame,
+  Search,
+  Plus,
+  X,
+  Star
+} from 'lucide-react-native';
 import * as Location from 'expo-location';
 import Animated, {
   useSharedValue,
@@ -36,9 +49,13 @@ export default function SOSScreen() {
   const [countdown, setCountdown] = useState(5);
   const [nearbyHelpers, setNearbyHelpers] = useState([]);
   const [users, setUsers] = useState([]);
+  const [filteredUsers, setFilteredUsers] = useState([]);
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [showUserModal, setShowUserModal] = useState(false);
-  const [alertMode, setAlertMode] = useState('specific'); // 'specific', 'radius', or 'community'
+  const [showSearchModal, setShowSearchModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [alertMode, setAlertMode] = useState('specific');
+  const [savedContacts, setSavedContacts] = useState([]);
   const { showToast } = useToast();
 
   const scale = useSharedValue(1);
@@ -51,11 +68,14 @@ export default function SOSScreen() {
     { id: '3', name: 'Fire Department', number: '101', icon: <Flame size={24} color="#FFFFFF" />, backgroundColor: '#F59E0B' },
   ];
 
-  const familyContacts = [
-    { id: '1', name: 'Mom', number: '+1234567890', image: 'https://images.unsplash.com/photo-1581403341630-a6e0b9d2d257?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80' },
-    { id: '2', name: 'Dad', number: '+1987654321', image: 'https://images.unsplash.com/photo-1582750433449-648ed127bb54?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80' },
-    { id: '3', name: 'Sister', number: '+1122334455', image: 'https://images.unsplash.com/photo-1535008652995-e95986556e32?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=80' },
-  ];
+  const sosButtonAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value || 1 }],
+    borderWidth: borderWidth.value || 2,
+  }));
+
+  const alertIconAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotation.value || 0}deg` }],
+  }));
 
   useEffect(() => {
     (async () => {
@@ -90,7 +110,44 @@ export default function SOSScreen() {
 
     fetchUsers();
     fetchActiveSOSAlerts();
+    loadSavedContacts();
   }, []);
+
+  const loadSavedContacts = async () => {
+    try {
+      const savedContactsString = await AsyncStorage.getItem('savedContacts');
+      if (savedContactsString) {
+        const contacts = JSON.parse(savedContactsString);
+        setSavedContacts(contacts);
+      }
+    } catch (error) {
+      console.error('Error loading saved contacts:', error);
+    }
+  };
+
+  const saveContact = async (user) => {
+    try {
+      const updatedContacts = [...savedContacts, user];
+      await AsyncStorage.setItem('savedContacts', JSON.stringify(updatedContacts));
+      setSavedContacts(updatedContacts);
+      showToast('Contact saved successfully!', 'success');
+    } catch (error) {
+      console.error('Error saving contact:', error);
+      showToast('Failed to save contact', 'error');
+    }
+  };
+
+  const removeContact = async (userId) => {
+    try {
+      const updatedContacts = savedContacts.filter(contact => contact.id !== userId);
+      await AsyncStorage.setItem('savedContacts', JSON.stringify(updatedContacts));
+      setSavedContacts(updatedContacts);
+      showToast('Contact removed successfully!', 'success');
+    } catch (error) {
+      console.error('Error removing contact:', error);
+      showToast('Failed to remove contact', 'error');
+    }
+  };
 
   useEffect(() => {
     let interval;
@@ -119,13 +176,18 @@ export default function SOSScreen() {
           'Authorization': `Bearer ${token}`,
         },
       });
-      console.log("TEST", response);
 
       const data = await response.json();
+      console.log('Fetched users data:', data);
       if (response.ok) {
-        setUsers(data);
+        const userArray = Array.isArray(data) ? data : data.users || [];
+        setUsers(userArray);
+        setFilteredUsers(userArray);
+        if (userArray.length === 0) {
+          showToast('No users found from the API', 'warning');
+        }
       } else {
-        showToast('Failed to fetch users', 'error');
+        showToast('Failed to fetch users: ' + (data.message || 'Unknown error'), 'error');
       }
     } catch (error) {
       showToast('Network error fetching users', 'error');
@@ -145,7 +207,6 @@ export default function SOSScreen() {
           'Authorization': `Bearer ${token}`,
         },
       });
-      console.log("active", response);
       const data = await response.json();
       if (response.ok) {
         const helpers = data.map(alert => ({
@@ -163,11 +224,6 @@ export default function SOSScreen() {
   };
 
   const triggerEmergencyAlert = async () => {
-    if (!location) {
-      showToast('Location unavailable. Cannot send SOS.', 'error');
-      return;
-    }
-
     try {
       const token = await AsyncStorage.getItem('access_token');
       if (!token) {
@@ -175,17 +231,29 @@ export default function SOSScreen() {
         return;
       }
 
+      const defaultLatitude = 23.797911; // Gulshan, Dhaka latitude
+      const defaultLongitude = 90.414391; // Gulshan, Dhaka longitude
+
       const payload = {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
+        latitude: location ? location.coords.latitude : defaultLatitude,
+        longitude: location ? location.coords.longitude : defaultLongitude,
       };
-      if (alertMode === 'specific' && selectedUsers.length > 0) {
+
+      if (!location) {
+        showToast('Location unavailable. Using default Gulshan, Dhaka coordinates.', 'warning');
+      }
+
+      if (alertMode === 'specific') {
         payload.notified_users = selectedUsers;
       } else if (alertMode === 'community') {
         payload.is_community_alert = true;
-      } // 'radius' mode uses default backend behavior (no extra field)
-
-      console.log('Sending SOS payload:', JSON.stringify(payload));
+      } else if (alertMode === 'radius') {
+        payload.is_radius_alert = true;
+        payload.radius_km = 5;
+      } else {
+        console.warn('Unknown alertMode:', alertMode);
+      }
+      console.log('Final SOS payload:', JSON.stringify(payload));
 
       const response = await fetch(`${BASE_URL}/api/sos/create/`, {
         method: 'POST',
@@ -212,7 +280,7 @@ export default function SOSScreen() {
       setIsEmergencyActive(false);
       setCountdown(5);
       setSelectedUsers([]);
-      setAlertMode('specific'); // Reset to default
+      setAlertMode('specific');
       rotation.value = withRepeat(
         withTiming(360, { duration: 2000, easing: Easing.linear }),
         -1,
@@ -249,38 +317,72 @@ export default function SOSScreen() {
     showToast(`SOS will be triggered in ${countdown} seconds. Tap again to cancel.`, 'info');
   };
 
-  const callEmergencyNumber = (number) => {
-    if (Platform.OS === 'web') {
-      showToast('Calling is not available on web', 'error');
-      return;
-    }
-    Linking.openURL(`tel:${number}`);
+  const handleSearch = (text) => {
+    setSearchQuery(text);
+    const filtered = users.filter(user => 
+      `${user.first_name} ${user.last_name}`.toLowerCase().includes(text.toLowerCase()) ||
+      user.email.toLowerCase().includes(text.toLowerCase())
+    );
+    console.log('Filtered users:', filtered);
+    setFilteredUsers(filtered);
   };
 
-  const sendSMS = (number) => {
-    if (Platform.OS === 'web') {
-      showToast('SMS is not available on web', 'error');
-      return;
-    }
-    const message = `EMERGENCY: I need help! My location is: ${location ?
-      `https://maps.google.com/?q=${location.coords.latitude},${location.coords.longitude}` :
-      'Location not available'}`;
-    Linking.openURL(`sms:${number}?body=${encodeURIComponent(message)}`);
+  const renderUserItem = ({ item }) => {
+    const isSelected = selectedUsers.includes(item.id);
+    const isSaved = savedContacts.some(contact => contact.id === item.id);
+
+    return (
+      <View style={[styles.userItem, isSelected && styles.userItemSelected]}>
+        <TouchableOpacity 
+          style={styles.userItemContent}
+          onPress={() => toggleUserSelection(item.id)}
+        >
+          <View style={styles.userInfo}>
+            <Text style={styles.userName}>
+              {item.first_name} {item.last_name}
+            </Text>
+            <Text style={styles.userEmail}>{item.email}</Text>
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.saveButton}
+          onPress={() => isSaved ? removeContact(item.id) : saveContact(item)}
+        >
+          <Text style={styles.saveButtonText}>
+            {isSaved ? 'Remove' : 'Save'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
   };
 
-  const sosButtonAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-    borderWidth: borderWidth.value,
-  }));
-
-  const alertIconAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${rotation.value}deg` }],
-  }));
+  const renderSavedContact = ({ item }) => (
+    <View style={styles.savedContactItem}>
+      <View style={styles.savedContactInfo}>
+        <Text style={styles.savedContactName}>
+          {item.first_name} {item.last_name}
+        </Text>
+        <Text style={styles.savedContactEmail}>{item.email}</Text>
+      </View>
+      <TouchableOpacity 
+        style={styles.removeButton}
+        onPress={() => removeContact(item.id)}
+      >
+        <X size={16} color={Colors.light.error} />
+      </TouchableOpacity>
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Emergency SOS</Text>
+        <TouchableOpacity 
+          style={styles.searchButton}
+          onPress={() => setShowSearchModal(true)}
+        >
+          <Search size={24} color={Colors.light.text} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -318,6 +420,21 @@ export default function SOSScreen() {
           </Text>
         </View>
 
+        {savedContacts.length > 0 && (
+          <View style={styles.savedContactsSection}>
+            <View style={styles.sectionHeader}>
+              <Users size={20} color={Colors.light.primary} />
+              <Text style={styles.sectionTitle}>Saved Contacts</Text>
+            </View>
+            <FlatList
+              data={savedContacts}
+              renderItem={renderSavedContact}
+              keyExtractor={item => item.id.toString()}
+              scrollEnabled={false}
+            />
+          </View>
+        )}
+
         {nearbyHelpers.length > 0 && (
           <Animated.View
             style={styles.nearbyHelpersSection}
@@ -351,7 +468,7 @@ export default function SOSScreen() {
                   </View>
                   <TouchableOpacity
                     style={styles.callButton}
-                    onPress={() => callEmergencyNumber('+1234567890')}
+                    onPress={() => Linking.openURL(`tel:${'+1234567890'}`)} // Fixed call function
                   >
                     <Phone size={16} color="#FFFFFF" />
                   </TouchableOpacity>
@@ -371,7 +488,7 @@ export default function SOSScreen() {
               <TouchableOpacity
                 key={contact.id}
                 style={[styles.emergencyContactCard, { backgroundColor: contact.backgroundColor }]}
-                onPress={() => callEmergencyNumber(contact.number)}
+                onPress={() => Linking.openURL(`tel:${contact.number}`)} // Fixed call function
               >
                 <View style={styles.emergencyContactIcon}>
                   {contact.icon}
@@ -381,39 +498,6 @@ export default function SOSScreen() {
               </TouchableOpacity>
             ))}
           </View>
-        </View>
-
-        <View style={styles.familyContactsSection}>
-          <View style={styles.sectionHeader}>
-            <Users size={20} color={Colors.light.primary} />
-            <Text style={styles.sectionTitle}>Family Contacts</Text>
-          </View>
-          {familyContacts.map((contact) => (
-            <AnimatedPressable key={contact.id} style={styles.familyContactCard}>
-              <Image source={{ uri: contact.image }} style={styles.familyContactImage} />
-              <View style={styles.familyContactInfo}>
-                <Text style={styles.familyContactName}>{contact.name}</Text>
-                <Text style={styles.familyContactNumber}>{contact.number}</Text>
-              </View>
-              <View style={styles.familyContactActions}>
-                <TouchableOpacity
-                  style={[styles.familyContactButton, styles.callFamilyButton]}
-                  onPress={() => callEmergencyNumber(contact.number)}
-                >
-                  <Phone size={16} color="#FFFFFF" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.familyContactButton, styles.smsFamilyButton]}
-                  onPress={() => sendSMS(contact.number)}
-                >
-                  <Text style={styles.smsButtonText}>SOS</Text>
-                </TouchableOpacity>
-              </View>
-            </AnimatedPressable>
-          ))}
-          <TouchableOpacity style={styles.addContactButton}>
-            <Text style={styles.addContactButtonText}>+ Add Emergency Contact</Text>
-          </TouchableOpacity>
         </View>
 
         <View style={styles.safetyTipsSection}>
@@ -442,6 +526,48 @@ export default function SOSScreen() {
         </View>
       </ScrollView>
 
+      {/* Search Modal */}
+      <Modal
+        visible={showSearchModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowSearchModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Search Contacts</Text>
+              <TouchableOpacity 
+                onPress={() => setShowSearchModal(false)}
+                style={styles.closeButton}
+              >
+                <X size={24} color={Colors.light.text} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.searchContainer}>
+              <Search size={20} color={Colors.light.subtext} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search by name or email"
+                value={searchQuery}
+                onChangeText={handleSearch}
+                placeholderTextColor={Colors.light.subtext}
+              />
+            </View>
+
+            <FlatList
+              data={filteredUsers}
+              renderItem={renderUserItem}
+              keyExtractor={item => item.id.toString()}
+              style={styles.userList}
+              ListEmptyComponent={<Text style={styles.noUsersText}>No users available</Text>}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      {/* SOS Options Modal */}
       <Modal
         visible={showUserModal}
         transparent={true}
@@ -486,25 +612,40 @@ export default function SOSScreen() {
             </TouchableOpacity>
 
             {alertMode === 'specific' && (
-              <FlatList
-                data={users}
-                keyExtractor={(item) => item.id.toString()}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={[
-                      styles.userItem,
-                      selectedUsers.includes(item.id) && styles.userItemSelected,
-                    ]}
-                    onPress={() => toggleUserSelection(item.id)}
-                  >
-                    <Text style={styles.userName}>
-                      {item.first_name} {item.last_name}
-                    </Text>
-                    <Text style={styles.userEmail}>{item.email}</Text>
-                  </TouchableOpacity>
+              <View style={styles.savedContactsContainer}>
+                <Text style={styles.savedContactsTitle}>Select Users to Notify</Text>
+                <View style={styles.searchContainer}>
+                  <Search size={20} color={Colors.light.subtext} />
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search by name or email"
+                    value={searchQuery}
+                    onChangeText={handleSearch}
+                    placeholderTextColor={Colors.light.subtext}
+                  />
+                </View>
+                {filteredUsers.length > 0 ? (
+                  <FlatList
+                    data={filteredUsers}
+                    renderItem={({ item }) => (
+                      <TouchableOpacity
+                        style={[
+                          styles.savedContactOption,
+                          selectedUsers.includes(item.id) && styles.savedContactOptionSelected,
+                        ]}
+                        onPress={() => toggleUserSelection(item.id)}
+                      >
+                        <Text style={styles.savedContactOptionText}>
+                          {item.first_name} {item.last_name}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                    keyExtractor={item => item.id.toString()}
+                  />
+                ) : (
+                  <Text style={styles.noUsersText}>No users match your search.</Text>
                 )}
-                style={styles.userList}
-              />
+              </View>
             )}
 
             <View style={styles.modalActions}>
@@ -531,6 +672,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.background,
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 15,
     backgroundColor: Colors.light.card,
@@ -542,6 +686,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.light.text,
     fontFamily: 'Inter-SemiBold',
+  },
+  searchButton: {
+    padding: 8,
   },
   scrollView: {
     flex: 1,
@@ -600,7 +747,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontFamily: 'Inter-Regular',
   },
-  nearbyHelpersSection: {
+  savedContactsSection: {
     paddingHorizontal: 20,
     marginBottom: 25,
   },
@@ -615,6 +762,183 @@ const styles = StyleSheet.create({
     color: Colors.light.text,
     marginLeft: 8,
     fontFamily: 'Inter-SemiBold',
+  },
+  savedContactItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.light.card,
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+  },
+  savedContactInfo: {
+    flex: 1,
+  },
+  savedContactName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: Colors.light.text,
+    fontFamily: 'Inter-Medium',
+  },
+  savedContactEmail: {
+    fontSize: 14,
+    color: Colors.light.subtext,
+    fontFamily: 'Inter-Regular',
+  },
+  removeButton: {
+    padding: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: Colors.light.background,
+    borderRadius: 12,
+    padding: 20,
+    width: '90%',
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: Colors.light.text,
+    fontFamily: 'Inter-SemiBold',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.light.card,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 12,
+    marginLeft: 8,
+    fontSize: 16,
+    color: Colors.light.text,
+    fontFamily: 'Inter-Regular',
+  },
+  userList: {
+    maxHeight: '70%',
+  },
+  userItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.border,
+  },
+  userItemSelected: {
+    backgroundColor: Colors.light.primary + '20',
+  },
+  userItemContent: {
+    flex: 1,
+  },
+  userInfo: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: Colors.light.text,
+    fontFamily: 'Inter-Medium',
+  },
+  userEmail: {
+    fontSize: 14,
+    color: Colors.light.subtext,
+    fontFamily: 'Inter-Regular',
+  },
+  saveButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: Colors.light.primary,
+  },
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+  },
+  savedContactsContainer: {
+    marginTop: 16,
+    marginBottom: 16,
+  },
+  savedContactsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.light.text,
+    marginBottom: 8,
+    fontFamily: 'Inter-SemiBold',
+  },
+  savedContactOption: {
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: Colors.light.card,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+  },
+  savedContactOptionSelected: {
+    backgroundColor: Colors.light.primary + '20',
+    borderColor: Colors.light.primary,
+  },
+  savedContactOptionText: {
+    fontSize: 16,
+    color: Colors.light.text,
+    fontFamily: 'Inter-Medium',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: Colors.light.border,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginRight: 8,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    color: Colors.light.text,
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+  },
+  confirmButton: {
+    flex: 1,
+    backgroundColor: Colors.light.primary,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginLeft: 8,
+    alignItems: 'center',
+  },
+  confirmButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+  },
+  nearbyHelpersSection: {
+    paddingHorizontal: 20,
+    marginBottom: 25,
   },
   helperSubtitle: {
     fontSize: 14,
@@ -710,82 +1034,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontFamily: 'Inter-Regular',
   },
-  familyContactsSection: {
-    paddingHorizontal: 20,
-    marginBottom: 25,
-  },
-  familyContactCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.light.card,
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  familyContactImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 15,
-  },
-  familyContactInfo: {
-    flex: 1,
-  },
-  familyContactName: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: Colors.light.text,
-    marginBottom: 4,
-    fontFamily: 'Inter-Medium',
-  },
-  familyContactNumber: {
-    fontSize: 14,
-    color: Colors.light.subtext,
-    fontFamily: 'Inter-Regular',
-  },
-  familyContactActions: {
-    flexDirection: 'row',
-  },
-  familyContactButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 8,
-  },
-  callFamilyButton: {
-    backgroundColor: Colors.light.primary,
-  },
-  smsFamilyButton: {
-    backgroundColor: Colors.light.error,
-  },
-  smsButtonText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-    fontFamily: 'Inter-Bold',
-  },
-  addContactButton: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: Colors.light.primary,
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  addContactButtonText: {
-    color: Colors.light.primary,
-    fontSize: 16,
-    fontWeight: '500',
-    fontFamily: 'Inter-Medium',
-  },
   safetyTipsSection: {
     paddingHorizontal: 20,
     marginBottom: 30,
@@ -811,26 +1059,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontFamily: 'Inter-Regular',
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: Colors.light.background,
-    borderRadius: 12,
-    padding: 20,
-    width: '90%',
-    maxHeight: '80%',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: Colors.light.text,
-    marginBottom: 15,
-    fontFamily: 'Inter-SemiBold',
-  },
   optionButton: {
     padding: 15,
     borderRadius: 8,
@@ -845,53 +1073,11 @@ const styles = StyleSheet.create({
     color: Colors.light.text,
     fontFamily: 'Inter-Medium',
   },
-  userList: {
-    maxHeight: '60%',
-  },
-  userItem: {
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.border,
-  },
-  userItemSelected: {
-    backgroundColor: Colors.light.primary + '20',
-  },
-  userName: {
+  noUsersText: {
     fontSize: 16,
-    fontWeight: '500',
-    color: Colors.light.text,
-    fontFamily: 'Inter-Medium',
-  },
-  userEmail: {
-    fontSize: 14,
     color: Colors.light.subtext,
+    textAlign: 'center',
+    padding: 20,
     fontFamily: 'Inter-Regular',
-  },
-  modalActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 20,
-  },
-  cancelButton: {
-    backgroundColor: Colors.light.border,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-  },
-  cancelButtonText: {
-    color: Colors.light.text,
-    fontSize: 16,
-    fontFamily: 'Inter-Medium',
-  },
-  confirmButton: {
-    backgroundColor: Colors.light.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-  },
-  confirmButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontFamily: 'Inter-Medium',
   },
 });
