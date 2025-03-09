@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -19,15 +19,44 @@ import Logo from '../../components/Logo';
 import { useToast } from '../../components/ToastProvider';
 import AnimatedPressable from '../../components/AnimatedPressable';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Notifications from 'expo-notifications';
 
 const BASE_URL = 'https://ride.big-matrix.com';
 
 export default function LoginScreen() {
-const [email, setEmail] = useState('kazi.sanjid@northsouth.edu');
+  const [email, setEmail] = useState('kazi.sanjid@northsouth.edu');
   const [password, setPassword] = useState('test123');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [expoPushToken, setExpoPushToken] = useState('');
   const { showToast } = useToast();
+
+  // Function to get Expo push token
+  const registerForPushNotificationsAsync = async () => {
+    try {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+      if (finalStatus !== 'granted') {
+        console.log('Failed to get push token for push notification!');
+        return '';
+      }
+      const token = (await Notifications.getExpoPushTokenAsync()).data;
+      console.log('Expo Push Token:', token);
+      return token;
+    } catch (error) {
+      console.error('Error getting push token:', error);
+      return '';
+    }
+  };
+
+  // Fetch token on component mount
+  useEffect(() => {
+    registerForPushNotificationsAsync().then(token => setExpoPushToken(token));
+  }, []);
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -40,6 +69,7 @@ const [email, setEmail] = useState('kazi.sanjid@northsouth.edu');
       const payload = {
         email,
         password,
+        expo_push_token: expoPushToken,  // Include the token in the payload
       };
       console.log('Sending payload:', JSON.stringify(payload));
 
@@ -57,7 +87,6 @@ const [email, setEmail] = useState('kazi.sanjid@northsouth.edu');
       const data = JSON.parse(rawResponse);
 
       if (response.ok) {
-        // Store the tokens
         await AsyncStorage.setItem('access_token', data.access);
         await AsyncStorage.setItem('refresh_token', data.refresh);
         await AsyncStorage.setItem('user_data', JSON.stringify(data.user));
