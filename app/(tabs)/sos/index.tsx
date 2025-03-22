@@ -90,10 +90,6 @@ export default function SOSScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Emergency SOS</Text>
-      </View>
-
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.sosButtonContainer}>
           <Animated.View
@@ -146,20 +142,7 @@ export default function SOSScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.light.background,
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: Colors.light.card,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.border,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: Colors.light.text,
-    fontFamily: 'Inter-SemiBold',
+    backgroundColor: '#FFFFFF', // White background to match the screenshot
   },
   scrollView: {
     flex: 1,
@@ -174,20 +157,20 @@ const styles = StyleSheet.create({
     height: 150,
     borderRadius: 75,
     borderWidth: 2,
-    borderColor: Colors.light.error,
+    borderColor: '#EF4444', // Red border to match the SOS theme
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 15,
   },
   sosButtonOuterActive: {
-    borderColor: Colors.light.error,
+    borderColor: '#EF4444',
     borderWidth: 6,
   },
   sosButton: {
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: Colors.light.error,
+    backgroundColor: '#EF4444', // Red background for the SOS button
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -197,7 +180,7 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   sosButtonActive: {
-    backgroundColor: '#FF0000',
+    backgroundColor: '#FF0000', // Slightly darker red when active
   },
   sosButtonText: {
     color: '#FFFFFF',
@@ -214,27 +197,29 @@ const styles = StyleSheet.create({
   },
   sosInstructions: {
     fontSize: 14,
-    color: Colors.light.subtext,
+    color: '#6B7280', // Gray color to match the screenshot
     textAlign: 'center',
     fontFamily: 'Inter-Regular',
   },
   infoSection: {
     padding: 20,
-    backgroundColor: Colors.light.card,
+    backgroundColor: '#FFFFFF', // White background
     marginHorizontal: 20,
     borderRadius: 12,
     marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB', // Light gray border to match the screenshot
   },
   infoTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: Colors.light.text,
+    color: '#1F2937', // Dark gray for text
     marginBottom: 12,
     fontFamily: 'Inter-SemiBold',
   },
   infoText: {
     fontSize: 14,
-    color: Colors.light.subtext,
+    color: '#6B7280', // Gray color for subtext
     lineHeight: 24,
     fontFamily: 'Inter-Regular',
   },
